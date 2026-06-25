@@ -16,6 +16,7 @@
     "@tauri-apps/plugin-opener": "^2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "marked": "^15.0.12",
     "scheduler": "^0.26.0"
   },
   "devDependencies": {

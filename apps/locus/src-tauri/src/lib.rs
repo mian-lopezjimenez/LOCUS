@@ -1,11 +1,27 @@
+mod openclaw_chat;
+mod spotlight_session;
+mod spotlight_window;
 mod supervisor;
 
+use openclaw_chat::{send_chat_completion, ChatMessage};
+use spotlight_session::{load_spotlight_session, save_spotlight_session};
+use spotlight_window::{read_gateway_token, toggle as toggle_spotlight};
 use supervisor::get_service_health;
 use tauri::{Emitter, Manager};
 
 #[tauri::command]
 async fn get_service_status() -> supervisor::ServiceHealth {
     get_service_health().await
+}
+
+#[tauri::command]
+fn get_gateway_token() -> Option<String> {
+    read_gateway_token()
+}
+
+#[tauri::command]
+async fn send_chat_message(messages: Vec<ChatMessage>) -> Result<String, String> {
+    send_chat_completion(messages).await
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -34,15 +50,14 @@ pub fn run() {
 
                             eprintln!("LOCUS: atajo pulsado — {shortcut}");
 
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-
                             let shortcut_str = shortcut.to_string().to_lowercase();
                             if shortcut_str.contains('l') {
-                                let _ = handle.emit("locus:toggle-spotlight", ());
+                                toggle_spotlight(app);
                             } else if shortcut_str.contains('v') {
+                                if let Some(window) = app.get_webview_window("main") {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
                                 let _ = handle.emit("locus:toggle-voice", ());
                             }
                         })
@@ -76,7 +91,13 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_service_status])
+        .invoke_handler(tauri::generate_handler![
+            get_service_status,
+            get_gateway_token,
+            send_chat_message,
+            load_spotlight_session,
+            save_spotlight_session
+        ])
         .run(tauri::generate_context!())
         .expect("error al ejecutar LOCUS");
 }

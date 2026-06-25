@@ -23,6 +23,9 @@ export default defineConfig(async () => ({
     },
   },
   resolve: {
-    preserveSymlinks: true,
+    preserveSymlinks: false,
+  },
+  optimizeDeps: {
+    include: ["marked"],
   },
 }));

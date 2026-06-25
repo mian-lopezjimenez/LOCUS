@@ -38,15 +38,11 @@ function App() {
   }, [refresh]);
 
   useEffect(() => {
-    const unlistenSpotlight = listen("locus:toggle-spotlight", () => {
-      setLastShortcut("Barra prompt (Ctrl+Alt+L) — Fase 2");
-    });
     const unlistenVoice = listen("locus:toggle-voice", () => {
       setLastShortcut("Modo voz (Ctrl+Alt+V) — Fase 6");
     });
 
     return () => {
-      void unlistenSpotlight.then((fn) => fn());
       void unlistenVoice.then((fn) => fn());
     };
   }, []);
@@ -94,7 +90,7 @@ function App() {
       )}
 
       <footer className="app__footer muted">
-        Atajos: Ctrl+Alt+L (prompt) · Ctrl+Alt+V (voz)
+        Atajos: Ctrl+Alt+L (barra) · Ctrl+Alt+V (voz)
       </footer>
     </main>
   );

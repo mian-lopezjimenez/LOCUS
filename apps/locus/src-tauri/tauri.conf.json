@@ -17,8 +17,23 @@
         "width": 480,
         "height": 360,
         "resizable": true,
-        "visible": true,
+        "visible": false,
         "decorations": true
+      },
+      {
+        "label": "spotlight",
+        "title": "LOCUS",
+        "width": 420,
+        "height": 800,
+        "resizable": false,
+        "decorations": false,
+        "transparent": false,
+        "backgroundColor": "#1a1b1e",
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "shadow": true,
+        "focus": true
       }
     ],
     "security": {
