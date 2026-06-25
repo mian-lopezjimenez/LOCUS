@@ -17,6 +17,7 @@
     "core:window:allow-start-dragging",
     "core:window:allow-set-size",
     "core:window:allow-current-monitor",
-    "core:path:default"
+    "core:path:default",
+    "dialog:default"
   ]
 }

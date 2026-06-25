@@ -44,7 +44,7 @@ fn apply_model_headers(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub role: String,
-    pub content: String,
+    pub content: serde_json::Value,
 }
 
 #[derive(Debug, Deserialize)]
@@ -129,7 +129,7 @@ async fn send_non_streaming(
     .choices
     .and_then(|choices| choices.into_iter().next())
     .and_then(|choice| choice.message)
-    .map(|message| message.content)
+    .and_then(|message| message.content.as_str().map(str::to_string))
     .unwrap_or_default();
 
   Ok(content)

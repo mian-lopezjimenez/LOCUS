@@ -1,13 +1,21 @@
-import { Square, ArrowRight } from "lucide-react";
+import { Paperclip, Square, ArrowRight } from "lucide-react";
 import { useEffect, useRef } from "react";
+import {
+  AttachmentChips,
+  DropOverlay,
+  VisionNotice,
+} from "@/components/chat/AttachmentChips";
 import { ModelSelect } from "@/components/chat/SpotlightHeader";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { PendingAttachment } from "@/types/attachment";
 import type { ChatRole } from "@/types/chat";
 import type { ModelInfo } from "@/types/models";
+import { hasImageAttachments } from "@/utils/attachments";
+import { pickVisionModel } from "@/utils/vision";
 
 type ChatComposerProps = {
   query: string;
@@ -19,6 +27,16 @@ type ChatComposerProps = {
   onSubmit: () => void;
   onStop: () => void;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  attachments: PendingAttachment[];
+  onRemoveAttachment: (id: string) => void;
+  onPickFiles: () => void;
+  onPaste: (event: React.ClipboardEvent) => void;
+  onDragOver: (event: React.DragEvent) => void;
+  onDragLeave: (event: React.DragEvent) => void;
+  onDrop: (event: React.DragEvent) => void;
+  dragOver: boolean;
+  attachmentError?: string | null;
+  visionModelId?: string;
 };
 
 export function ChatComposer({
@@ -31,7 +49,25 @@ export function ChatComposer({
   onSubmit,
   onStop,
   inputRef,
+  attachments,
+  onRemoveAttachment,
+  onPickFiles,
+  onPaste,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  dragOver,
+  attachmentError,
+  visionModelId,
 }: ChatComposerProps) {
+  const selected = models.find((model) => model.id === selectedModel);
+  const needsVision = hasImageAttachments(attachments);
+  const visionModel = pickVisionModel(models, visionModelId);
+  const willDelegate = needsVision && !selected?.supportsVision;
+  const visionUnavailable = willDelegate && !visionModel;
+  const canSubmit =
+    (query.trim() || attachments.length > 0) && !visionUnavailable;
+
   return (
     <footer className="shrink-0 border-t border-border bg-card px-3 py-2.5">
       <div className="mb-2 flex min-w-0 items-center">
@@ -42,17 +78,48 @@ export function ChatComposer({
           disabled={loading}
         />
       </div>
-      <div className="flex items-center gap-2">
+
+      <VisionNotice
+        willDelegate={willDelegate}
+        visionUnavailable={visionUnavailable}
+        visionModelLabel={visionModel?.label}
+      />
+      {attachmentError && (
+        <p className="mb-2 text-xs text-destructive">{attachmentError}</p>
+      )}
+      <AttachmentChips attachments={attachments} onRemove={onRemoveAttachment} />
+
+      <div
+        className="relative flex items-center gap-2"
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+      >
+        <DropOverlay active={dragOver} />
+        <TooltipHint content="Adjuntar archivo">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-10 shrink-0 text-muted-foreground"
+            onClick={onPickFiles}
+            disabled={loading}
+            aria-label="Adjuntar archivo"
+          >
+            <Paperclip className="size-4" />
+          </Button>
+        </TooltipHint>
         <Textarea
           ref={inputRef}
           placeholder="Pregunta a LOCUS…"
           value={query}
           rows={1}
           onChange={(event) => onQueryChange(event.target.value)}
+          onPaste={onPaste}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
-              onSubmit();
+              if (canSubmit) onSubmit();
             }
           }}
           disabled={loading}
@@ -79,7 +146,7 @@ export function ChatComposer({
             size="icon-sm"
             className="size-10 shrink-0"
             onClick={onSubmit}
-            disabled={!query.trim()}
+            disabled={!canSubmit}
             aria-label="Enviar"
           >
             <ArrowRight className="size-4" />

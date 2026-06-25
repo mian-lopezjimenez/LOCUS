@@ -11,7 +11,8 @@ import { ConversationHistory } from "@/components/chat/ConversationHistory";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { IconButton } from "@/components/chat/SpotlightHeader";
 import { SettingsPage } from "@/features/settings";
-import { useChatStream } from "@/hooks/useChatStream";
+import { useChatStream, type ProcessingPhase } from "@/hooks/useChatStream";
+import { useComposerAttachments } from "@/hooks/useComposerAttachments";
 import { useConversations } from "@/hooks/useConversations";
 import { useSpotlightWindow } from "@/hooks/useSpotlightWindow";
 import { DEFAULT_MODEL } from "@/lib/constants";
@@ -20,6 +21,7 @@ import { loadSpotlightStore } from "@/services/conversations";
 import { listChatModels } from "@/services/models";
 import { loadSettings, saveSettings } from "@/services/settings";
 import { normalizeModelId } from "@/utils/model";
+import { pickVisionModel } from "@/utils/vision";
 import type { ModelInfo } from "@/types/models";
 import type { ChatTurn } from "@/types/chat";
 
@@ -35,8 +37,19 @@ function SpotlightChatView({
   onStop,
   messages,
   streamingId,
+  processingPhase,
   onRetry,
   onOpenFullView,
+  attachments,
+  onRemoveAttachment,
+  onPickFiles,
+  onPaste,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  dragOver,
+  attachmentError,
+  visionModelId,
 }: {
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
   query: string;
@@ -49,8 +62,19 @@ function SpotlightChatView({
   onStop: () => void;
   messages: ChatTurn[];
   streamingId: string | null;
+  processingPhase: ProcessingPhase;
   onRetry: (messageId: string) => void;
   onOpenFullView: () => void;
+  attachments: ReturnType<typeof useComposerAttachments>["attachments"];
+  onRemoveAttachment: (id: string) => void;
+  onPickFiles: () => void;
+  onPaste: (event: React.ClipboardEvent) => void;
+  onDragOver: (event: React.DragEvent) => void;
+  onDragLeave: (event: React.DragEvent) => void;
+  onDrop: (event: React.DragEvent) => void;
+  dragOver: boolean;
+  attachmentError: string | null;
+  visionModelId?: string;
 }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -68,17 +92,23 @@ function SpotlightChatView({
         messages={messages}
         loading={loading}
         streamingId={streamingId}
-        renderMessage={(message) => (
-          <MessageRow
-            key={message.id}
-            id={message.id}
-            role={message.role}
-            content={message.content}
-            streaming={message.streaming}
-            loading={loading}
-            onRetry={onRetry}
-          />
-        )}
+        renderMessage={(message) => {
+          const turn = messages.find((item) => item.id === message.id);
+          return (
+            <MessageRow
+              key={message.id}
+              id={message.id}
+              role={message.role}
+              content={message.content}
+              prompt={turn?.prompt}
+              attachments={turn?.attachments}
+              streaming={message.streaming}
+              loading={loading}
+              processingPhase={processingPhase}
+              onRetry={onRetry}
+            />
+          );
+        }}
       />
 
       <ChatComposer
@@ -91,6 +121,16 @@ function SpotlightChatView({
         onQueryChange={setQuery}
         onSubmit={onSubmit}
         onStop={onStop}
+        attachments={attachments}
+        onRemoveAttachment={onRemoveAttachment}
+        onPickFiles={onPickFiles}
+        onPaste={onPaste}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        dragOver={dragOver}
+        attachmentError={attachmentError}
+        visionModelId={visionModelId}
       />
     </div>
   );
@@ -100,6 +140,8 @@ export function Spotlight() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [query, setQuery] = useState("");
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
+  const [visionModelId, setVisionModelId] = useState<string | undefined>();
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
   const focusInput = useCallback(() => {
     inputRef.current?.focus();
@@ -118,16 +160,6 @@ export function Spotlight() {
     deleteConversation,
   } = useConversations();
 
-  const { loading, streamingId, submit, retryFromMessage, stopGeneration } =
-    useChatStream({
-      messages,
-      messagesRef,
-      setMessages,
-      selectedModel,
-      persistCurrentConversation,
-      focusInput,
-    });
-
   const { closePanel } = useSpotlightWindow(focusInput);
 
   const bootstrapQuery = useQuery({
@@ -140,6 +172,36 @@ export function Spotlight() {
       ]);
       return { store, settings, modelList };
     },
+  });
+
+  const models = bootstrapQuery.data?.modelList ?? [];
+
+  const { loading, streamingId, processingPhase, submit, retryFromMessage, stopGeneration } =
+    useChatStream({
+      messages,
+      messagesRef,
+      setMessages,
+      selectedModel,
+      visionModelId,
+      models,
+      activeConversationId,
+      persistCurrentConversation,
+      focusInput,
+    });
+
+  const {
+    attachments,
+    dragOver,
+    pickFiles,
+    removeAttachment,
+    clearAttachments,
+    handlePaste,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+  } = useComposerAttachments({
+    disabled: loading,
+    onError: setAttachmentError,
   });
 
   useEffect(() => {
@@ -156,12 +218,21 @@ export function Spotlight() {
 
     setSelectedModel(savedModel);
 
+    const savedVision = settings.visionModel;
+    const visionPick = pickVisionModel(modelList, savedVision);
+    setVisionModelId(visionPick?.id);
+
+    const settingsPatch: Parameters<typeof saveSettings>[0] = {};
     if (savedModel !== settings.selectedModel) {
-      void saveSettings({ selectedModel: savedModel });
+      settingsPatch.selectedModel = savedModel;
+    }
+    if (visionPick && savedVision !== visionPick.id) {
+      settingsPatch.visionModel = visionPick.id;
+    }
+    if (Object.keys(settingsPatch).length > 0) {
+      void saveSettings(settingsPatch);
     }
   }, [applyStore, bootstrapQuery.data]);
-
-  const models = bootstrapQuery.data?.modelList ?? [];
 
   const handleModelChange = async (modelId: string) => {
     setSelectedModel(modelId);
@@ -170,8 +241,11 @@ export function Spotlight() {
 
   const handleSubmit = () => {
     const text = query;
+    const pending = attachments;
     setQuery("");
-    void submit(text);
+    clearAttachments();
+    setAttachmentError(null);
+    void submit(text, pending);
   };
 
   const openFullView = async () => {
@@ -213,8 +287,19 @@ export function Spotlight() {
                 onStop={stopGeneration}
                 messages={messages}
                 streamingId={streamingId}
+                processingPhase={processingPhase}
                 onRetry={(messageId) => void retryFromMessage(messageId)}
                 onOpenFullView={() => void openFullView()}
+                attachments={attachments}
+                onRemoveAttachment={removeAttachment}
+                onPickFiles={() => void pickFiles()}
+                onPaste={handlePaste}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                dragOver={dragOver}
+                attachmentError={attachmentError}
+                visionModelId={visionModelId}
               />
             }
           />

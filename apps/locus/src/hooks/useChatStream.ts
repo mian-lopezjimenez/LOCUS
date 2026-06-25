@@ -2,18 +2,31 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SYSTEM_PROMPT } from "@/lib/constants";
 import {
+  pendingToMessageAttachments,
+  persistTurnAttachments,
+} from "@/services/attachments";
+import {
   cancelChatGeneration,
   sendChatMessageStream,
 } from "@/services/chat";
+import type { MessageAttachment, PendingAttachment } from "@/types/attachment";
 import type { ChatTurn } from "@/types/chat";
+import type { ModelInfo } from "@/types/models";
 import { newId } from "@/utils/id";
+import { buildApiMessages, buildDisplayContent } from "@/utils/attachments";
 import { findRetryContext } from "@/utils/retry";
+import { prepareAttachmentsForChatModel } from "@/utils/vision";
+
+export type ProcessingPhase = "vision" | "chat" | null;
 
 type UseChatStreamOptions = {
   messages: ChatTurn[];
   messagesRef: React.MutableRefObject<ChatTurn[]>;
   setMessages: React.Dispatch<React.SetStateAction<ChatTurn[]>>;
   selectedModel: string;
+  visionModelId?: string;
+  models: ModelInfo[];
+  activeConversationId: string;
   persistCurrentConversation: (turns: ChatTurn[]) => Promise<void>;
   focusInput: () => void;
 };
@@ -22,11 +35,15 @@ export function useChatStream({
   messagesRef,
   setMessages,
   selectedModel,
+  visionModelId,
+  models,
+  activeConversationId,
   persistCurrentConversation,
   focusInput,
 }: UseChatStreamOptions) {
   const [loading, setLoading] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [processingPhase, setProcessingPhase] = useState<ProcessingPhase>(null);
   const streamingIdRef = useRef<string | null>(null);
   const streamUnlistenersRef = useRef<Array<() => void>>([]);
   const loadingRef = useRef(false);
@@ -67,11 +84,37 @@ export function useChatStream({
   }, []);
 
   const sendMessage = useCallback(
-    async (text: string, context: ChatTurn[]) => {
+    async (
+      text: string,
+      context: ChatTurn[],
+      attachmentsInput: MessageAttachment[] | PendingAttachment[] = [],
+    ) => {
       const trimmed = text.trim();
-      if (!trimmed || loadingRef.current) return;
+      const messageAttachments: MessageAttachment[] =
+        attachmentsInput.length > 0 && "id" in attachmentsInput[0]!
+          ? pendingToMessageAttachments(attachmentsInput as PendingAttachment[])
+          : (attachmentsInput as MessageAttachment[]);
+      const hasAttachments = messageAttachments.length > 0;
+      if ((!trimmed && !hasAttachments) || loadingRef.current) return;
 
-      const userTurn: ChatTurn = { id: newId(), role: "user", content: trimmed };
+      const userId = newId();
+      let persistedAttachments = messageAttachments;
+
+      if (activeConversationId && messageAttachments.some((a) => a.kind === "image" && a.dataUrl)) {
+        persistedAttachments = await persistTurnAttachments(
+          activeConversationId,
+          userId,
+          messageAttachments,
+        );
+      }
+
+      const userTurn: ChatTurn = {
+        id: userId,
+        role: "user",
+        content: buildDisplayContent(trimmed, persistedAttachments),
+        prompt: trimmed || undefined,
+        attachments: persistedAttachments.length > 0 ? persistedAttachments : undefined,
+      };
       const assistantId = newId();
       const assistantTurn: ChatTurn = {
         id: assistantId,
@@ -97,17 +140,59 @@ export function useChatStream({
       streamUnlistenersRef.current = [unlistenChunk, unlistenCancelled];
 
       try {
-        const apiMessages = [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...context
-            .filter((message) => message.role !== "error")
-            .map((message) => ({
-              role: message.role,
-              content: message.content,
-            })),
-          { role: "user", content: trimmed },
-        ];
+        setProcessingPhase("vision");
+        const preparedUser = await prepareAttachmentsForChatModel(
+          trimmed,
+          persistedAttachments,
+          selectedModel,
+          models,
+          visionModelId,
+        );
+        const finalAttachments = preparedUser.attachments;
 
+        if (finalAttachments !== persistedAttachments) {
+          setMessages((prev) => {
+            const updated = prev.map((message) =>
+              message.id === userId
+                ? { ...message, attachments: finalAttachments }
+                : message,
+            );
+            messagesRef.current = updated;
+            return updated;
+          });
+        }
+
+        const contextMessages = await Promise.all(
+          context
+            .filter((message) => message.role !== "error")
+            .slice(-24)
+            .map(async (message) => {
+              const userText = message.prompt ?? message.content;
+              const prepared = await prepareAttachmentsForChatModel(
+                userText,
+                message.attachments ?? [],
+                selectedModel,
+                models,
+                visionModelId,
+              );
+              return {
+                role: message.role,
+                content: userText,
+                attachments: prepared.attachments,
+                textOnlyImages: prepared.textOnlyImages,
+              };
+            }),
+        );
+
+        const apiMessages = await buildApiMessages(
+          SYSTEM_PROMPT,
+          contextMessages,
+          trimmed,
+          finalAttachments,
+          { textOnlyImages: preparedUser.textOnlyImages },
+        );
+
+        setProcessingPhase("chat");
         const answer = await sendChatMessageStream(apiMessages, selectedModel);
 
         setMessages((prev) => {
@@ -150,23 +235,28 @@ export function useChatStream({
         cleanupStreamListeners();
         streamingIdRef.current = null;
         setStreamingId(null);
+        setProcessingPhase(null);
         setLoading(false);
         focusInput();
       }
     },
     [
+      activeConversationId,
       appendStreamChunk,
       cleanupStreamListeners,
       focusInput,
       messagesRef,
+      models,
       persistCurrentConversation,
       selectedModel,
       setMessages,
+      visionModelId,
     ],
   );
 
   const submit = useCallback(
-    (text: string) => sendMessage(text, messagesRef.current),
+    (text: string, pendingAttachments: PendingAttachment[] = []) =>
+      sendMessage(text, messagesRef.current, pendingAttachments),
     [messagesRef, sendMessage],
   );
 
@@ -180,7 +270,11 @@ export function useChatStream({
       setMessages(context.truncated);
       messagesRef.current = context.truncated;
       await persistCurrentConversation(context.truncated);
-      await sendMessage(context.userContent, context.truncated);
+      await sendMessage(
+        context.userText,
+        context.truncated,
+        context.userAttachments,
+      );
     },
     [messagesRef, persistCurrentConversation, sendMessage, setMessages],
   );
@@ -188,6 +282,7 @@ export function useChatStream({
   return {
     loading,
     streamingId,
+    processingPhase,
     submit,
     retryFromMessage,
     stopGeneration,

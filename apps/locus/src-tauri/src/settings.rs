@@ -14,6 +14,8 @@ pub struct AppSettings {
     pub selected_model: String,
     #[serde(default = "default_theme")]
     pub theme: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vision_model: Option<String>,
 }
 
 fn default_theme() -> String {
@@ -25,6 +27,7 @@ impl Default for AppSettings {
         Self {
             selected_model: DEFAULT_MODEL.to_string(),
             theme: DEFAULT_THEME.to_string(),
+            vision_model: None,
         }
     }
 }

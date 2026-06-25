@@ -1,3 +1,4 @@
+mod attachments;
 mod chat_cancel;
 mod ollama;
 mod openclaw_config;
@@ -31,6 +32,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(ChatCancelState::default())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![]),
@@ -103,6 +105,10 @@ pub fn run() {
             settings::load_settings,
             settings::save_settings,
             ollama::list_chat_models,
+            attachments::read_text_attachment,
+            attachments::read_image_attachment,
+            attachments::persist_image_attachment,
+            attachments::load_image_data_url,
             load_spotlight_store,
             save_spotlight_store,
             create_conversation,
