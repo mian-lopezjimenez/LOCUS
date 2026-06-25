@@ -1,0 +1,110 @@
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.spotlight-root {
+  padding: 8px;
+  font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  color: #e8eaed;
+}
+
+.spotlight-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(30, 31, 34, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(16px);
+}
+
+.spotlight-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+  min-width: 0;
+}
+
+.spotlight-input::placeholder {
+  color: #9aa0a6;
+}
+
+.spotlight-btn {
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  color: #e8eaed;
+  background: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.spotlight-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.spotlight-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.spotlight-btn--icon {
+  width: 36px;
+  height: 36px;
+  font-size: 1.1rem;
+}
+
+.spotlight-btn--send {
+  width: 36px;
+  height: 36px;
+  font-size: 1.2rem;
+  background: #3c6df0;
+}
+
+.spotlight-btn--send:hover:not(:disabled) {
+  background: #4a7af5;
+}
+
+.spotlight-response {
+  margin-top: 10px;
+  padding: 12px 14px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: rgba(22, 23, 26, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.spotlight-response__loading {
+  margin: 0;
+  color: #9aa0a6;
+  font-size: 0.9rem;
+}
+
+.spotlight-response__error {
+  margin: 0;
+  color: #f28b82;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+
+.spotlight-response__text {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}

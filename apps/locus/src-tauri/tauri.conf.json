@@ -17,8 +17,22 @@
         "width": 480,
         "height": 360,
         "resizable": true,
-        "visible": true,
+        "visible": false,
         "decorations": true
+      },
+      {
+        "label": "spotlight",
+        "title": "LOCUS Prompt",
+        "width": 640,
+        "height": 420,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "shadow": false,
+        "focus": true
       }
     ],
     "security": {
