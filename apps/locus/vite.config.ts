@@ -31,6 +31,6 @@ export default defineConfig(async () => ({
     },
   },
   optimizeDeps: {
-    include: ["marked"],
+    include: ["marked", "shiki"],
   },
 }));
