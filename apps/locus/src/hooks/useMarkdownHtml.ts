@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { renderMarkdown } from "@/lib/marked";
+import { useTheme } from "@/providers/ThemeProvider";
 
 const STREAM_THROTTLE_MS = 80;
 
@@ -8,6 +9,7 @@ export function useMarkdownHtml(
   enabled: boolean,
   streaming = false,
 ): string {
+  const { resolved } = useTheme();
   const [html, setHtml] = useState("");
 
   useEffect(() => {
@@ -20,7 +22,7 @@ export function useMarkdownHtml(
     const delay = streaming ? STREAM_THROTTLE_MS : 0;
 
     const timer = window.setTimeout(() => {
-      void renderMarkdown(content).then((result) => {
+      void renderMarkdown(content, resolved).then((result) => {
         if (!cancelled) {
           setHtml(result);
         }
@@ -31,7 +33,7 @@ export function useMarkdownHtml(
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [content, enabled, streaming]);
+  }, [content, enabled, streaming, resolved]);
 
   return html;
 }

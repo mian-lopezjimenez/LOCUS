@@ -1,13 +1,11 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef } from "react";
-import { useSpotlightUiStore } from "@/stores/spotlight-ui";
 import { getSidebarBounds, placeSidebar, animateWindowX } from "@/utils/window";
 
 export function useSpotlightWindow(focusInput: () => void) {
   const closingRef = useRef(false);
   const isOpenRef = useRef(false);
-  const setHistoryOpen = useSpotlightUiStore((state) => state.setHistoryOpen);
 
   const openPanel = useCallback(async () => {
     const win = getCurrentWindow();
@@ -39,8 +37,7 @@ export function useSpotlightWindow(focusInput: () => void) {
     await win.hide();
     isOpenRef.current = false;
     closingRef.current = false;
-    setHistoryOpen(false);
-  }, [setHistoryOpen]);
+  }, []);
 
   useEffect(() => {
     const unlistenOpen = listen("spotlight:open", () => {
@@ -59,18 +56,12 @@ export function useSpotlightWindow(focusInput: () => void) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-
-      if (useSpotlightUiStore.getState().historyOpen) {
-        setHistoryOpen(false);
-        return;
-      }
-
       void closePanel();
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closePanel, setHistoryOpen]);
+  }, [closePanel]);
 
   return { openPanel, closePanel };
 }

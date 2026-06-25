@@ -4,7 +4,10 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import App from "./App";
 import { Spotlight } from "@/features/spotlight";
 import { AppProviders } from "@/providers/AppProviders";
+import { applyThemeClass, systemResolvedTheme } from "@/lib/theme";
 import "@/index.css";
+
+applyThemeClass(systemResolvedTheme());
 
 async function bootstrap() {
   const label = (await getCurrentWindow()).label;

@@ -1,6 +1,10 @@
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { currentMonitor, type Window } from "@tauri-apps/api/window";
-import { SIDEBAR_WIDTH, SLIDE_MS } from "@/lib/constants";
+import {
+  SLIDE_MS,
+  SPOTLIGHT_WINDOW_WIDTH,
+  WINDOW_MARGIN,
+} from "@/lib/constants";
 import type { SidebarBounds } from "@/types/spotlight";
 import { easeOutCubic } from "./easing";
 
@@ -10,9 +14,13 @@ export async function getSidebarBounds(): Promise<SidebarBounds | null> {
 
   const scale = monitor.scaleFactor;
   const work = monitor.workArea;
-  const width = SIDEBAR_WIDTH;
-  const height = work.size.height / scale;
-  const x = work.position.x / scale + work.size.width / scale - width;
+  const width = SPOTLIGHT_WINDOW_WIDTH;
+  const height = work.size.height / scale - WINDOW_MARGIN;
+  const x =
+    work.position.x / scale +
+    work.size.width / scale -
+    width -
+    WINDOW_MARGIN;
   const y = work.position.y / scale;
   const offscreenX = work.position.x / scale + work.size.width / scale;
 

@@ -6,17 +6,25 @@ use tauri::Manager;
 
 const SETTINGS_FILE: &str = "settings.json";
 pub const DEFAULT_MODEL: &str = "openclaw/default";
+pub const DEFAULT_THEME: &str = "system";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     pub selected_model: String,
+    #[serde(default = "default_theme")]
+    pub theme: String,
+}
+
+fn default_theme() -> String {
+    DEFAULT_THEME.to_string()
 }
 
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
             selected_model: DEFAULT_MODEL.to_string(),
+            theme: DEFAULT_THEME.to_string(),
         }
     }
 }

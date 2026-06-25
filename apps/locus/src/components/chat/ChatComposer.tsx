@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
 import { Square, ArrowRight } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import type { ChatRole } from "@/types/chat";
 
 type ChatComposerProps = {
   query: string;
@@ -22,46 +23,50 @@ export function ChatComposer({
   inputRef,
 }: ChatComposerProps) {
   return (
-    <footer className="flex shrink-0 items-end gap-2 border-t border-border bg-card p-3">
-      <Textarea
-        ref={inputRef}
-        placeholder="Pregunta a LOCUS…"
-        value={query}
-        rows={1}
-        onChange={(event) => onQueryChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            onSubmit();
-          }
-        }}
-        disabled={loading}
-        spellCheck={false}
-        autoComplete="off"
-        className="min-h-10 max-h-28 resize-none bg-secondary text-sm"
-      />
-      {loading ? (
-        <Button
-          type="button"
-          variant="destructive"
-          size="icon"
-          onClick={onStop}
-          aria-label="Detener generación"
-          title="Detener"
-        >
-          <Square className="size-4 fill-current" />
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          size="icon"
-          onClick={onSubmit}
-          disabled={!query.trim()}
-          aria-label="Enviar"
-        >
-          <ArrowRight className="size-4" />
-        </Button>
-      )}
+    <footer className="shrink-0 border-t border-border bg-card px-3 py-2.5">
+      <div className="flex items-center gap-2">
+        <Textarea
+          ref={inputRef}
+          placeholder="Pregunta a LOCUS…"
+          value={query}
+          rows={1}
+          onChange={(event) => onQueryChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              onSubmit();
+            }
+          }}
+          disabled={loading}
+          spellCheck={false}
+          autoComplete="off"
+          className="min-h-10 max-h-28 flex-1 resize-none bg-secondary py-2 text-sm leading-5"
+        />
+        {loading ? (
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon-sm"
+            className="size-10 shrink-0"
+            onClick={onStop}
+            aria-label="Detener generación"
+            title="Detener"
+          >
+            <Square className="size-4 fill-current" />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            size="icon-sm"
+            className="size-10 shrink-0"
+            onClick={onSubmit}
+            disabled={!query.trim()}
+            aria-label="Enviar"
+          >
+            <ArrowRight className="size-4" />
+          </Button>
+        )}
+      </div>
     </footer>
   );
 }
@@ -95,7 +100,7 @@ export function MessageList({
   }, [messages, loading]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+    <div className="message-list-scroll relative flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden px-3 py-3">
       {messages.length === 0 && !loading && (
         <p className="m-auto text-center text-sm text-muted-foreground">
           Escribe una pregunta para empezar.
@@ -116,18 +121,36 @@ export function MessageBubble({
   role,
   children,
 }: {
-  role: "user" | "assistant" | "error";
+  role: ChatRole;
   children: React.ReactNode;
 }) {
   return (
     <div
       className={cn(
-        "w-full",
         role === "user" &&
           "rounded-lg border border-primary/25 bg-primary/15 px-3 py-2.5",
-        role === "assistant" && "px-0.5",
+        role === "assistant" && "px-0.5 py-0.5",
         role === "error" &&
           "rounded-lg border border-destructive/30 bg-destructive/15 px-3 py-2.5 text-destructive-foreground",
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function MessageRowLayout({
+  role,
+  children,
+}: {
+  role: ChatRole;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex w-full min-w-0",
+        role === "user" ? "justify-end" : "justify-start",
       )}
     >
       {children}
