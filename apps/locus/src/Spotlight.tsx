@@ -50,6 +50,16 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
+function normalizeModelId(modelId: string): string {
+  if (modelId === "openclaw" || modelId.startsWith("openclaw/")) {
+    return modelId;
+  }
+  if (modelId.startsWith("ollama:")) {
+    return modelId;
+  }
+  return `ollama:${modelId}`;
+}
+
 function mapStoredTurns(stored: StoredTurn[]): ChatTurn[] {
   return stored.map((m) => ({
     id: m.id,
@@ -109,6 +119,16 @@ async function placeSidebar(
   await win.setPosition(new LogicalPosition(x, bounds.y));
 }
 
+function TypingIndicator() {
+  return (
+    <div className="spotlight-typing" aria-label="Generando respuesta">
+      <span />
+      <span />
+      <span />
+    </div>
+  );
+}
+
 function MessageContent({
   role,
   content,
@@ -118,6 +138,9 @@ function MessageContent({
   content: string;
   streaming?: boolean;
 }) {
+  if (role === "assistant" && streaming && !content) {
+    return <TypingIndicator />;
+  }
   if (role === "assistant" && !streaming && content) {
     return (
       <div
@@ -230,8 +253,14 @@ export function Spotlight() {
         setMessages(turns);
         messagesRef.current = turns;
       }
-      setSelectedModel(settings.selectedModel || DEFAULT_MODEL);
+      const savedModel = normalizeModelId(settings.selectedModel || DEFAULT_MODEL);
+      setSelectedModel(savedModel);
       setModels(modelList);
+      if (savedModel !== settings.selectedModel) {
+        void invoke("save_settings", {
+          settings: { selectedModel: savedModel },
+        });
+      }
     });
   }, []);
 

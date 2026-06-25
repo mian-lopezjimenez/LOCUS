@@ -10,6 +10,7 @@ export type ChatMessage = {
 
 export type ChatCompletionOptions = {
   messages: ChatMessage[];
+  /** ID de agente OpenClaw (`openclaw/default`) o modelo Ollama (`ollama:qwen3:8b`). */
   model?: string;
   token?: string;
 };
@@ -39,11 +40,24 @@ export async function createChatCompletion(
     headers.Authorization = `Bearer ${token}`;
   }
 
+  const gatewayModel =
+    model === "openclaw" || model.startsWith("openclaw/")
+      ? model
+      : "openclaw/default";
+  const ollamaName = model.startsWith("ollama:")
+    ? model.slice("ollama:".length)
+    : model.startsWith("openclaw/") || model === "openclaw"
+      ? null
+      : model;
+  if (ollamaName) {
+    headers["x-openclaw-model"] = `ollama/${ollamaName}`;
+  }
+
   const response = await fetch(`${OPENCLAW_GATEWAY_URL}/v1/chat/completions`, {
     method: "POST",
     headers,
     body: JSON.stringify({
-      model,
+      model: gatewayModel,
       messages,
       stream: false,
     }),

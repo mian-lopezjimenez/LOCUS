@@ -7,6 +7,41 @@ use tauri::{AppHandle, Emitter, State};
 
 const OPENCLAW_CHAT_URL: &str = "http://127.0.0.1:18789/v1/chat/completions";
 
+/// OpenClaw exige `openclaw` o `openclaw/<agentId>` en el body; el modelo Ollama
+/// real va en el header `x-openclaw-model` (p. ej. `ollama/qwen3:8b`).
+pub struct ResolvedModel {
+    pub gateway_model: String,
+    pub backend_model: Option<String>,
+}
+
+pub fn resolve_model(selection: &str) -> ResolvedModel {
+    if selection == "openclaw" || selection.starts_with("openclaw/") {
+        return ResolvedModel {
+            gateway_model: selection.to_string(),
+            backend_model: None,
+        };
+    }
+
+    let ollama_name = selection
+        .strip_prefix("ollama:")
+        .unwrap_or(selection);
+
+    ResolvedModel {
+        gateway_model: crate::settings::DEFAULT_MODEL.to_string(),
+        backend_model: Some(format!("ollama/{ollama_name}")),
+    }
+}
+
+fn apply_model_headers(
+    mut request: reqwest::RequestBuilder,
+    resolved: &ResolvedModel,
+) -> reqwest::RequestBuilder {
+    if let Some(backend) = &resolved.backend_model {
+        request = request.header("x-openclaw-model", backend);
+    }
+    request
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub role: String,
@@ -80,9 +115,12 @@ async fn send_non_streaming(
   messages: &[ChatMessage],
   model: &str,
 ) -> Result<String, String> {
+  let resolved = resolve_model(model);
   let mut request = client
     .post(OPENCLAW_CHAT_URL)
-    .json(&build_request(messages, model, false));
+    .json(&build_request(messages, &resolved.gateway_model, false));
+
+  request = apply_model_headers(request, &resolved);
 
   if let Some(auth) = auth_header() {
     request = request.header("Authorization", auth);
@@ -136,9 +174,12 @@ async fn send_streaming(
   messages: &[ChatMessage],
   model: &str,
 ) -> Result<String, String> {
+  let resolved = resolve_model(model);
   let mut request = client
     .post(OPENCLAW_CHAT_URL)
-    .json(&build_request(messages, model, true));
+    .json(&build_request(messages, &resolved.gateway_model, true));
+
+  request = apply_model_headers(request, &resolved);
 
   if let Some(auth) = auth_header() {
     request = request.header("Authorization", auth);
