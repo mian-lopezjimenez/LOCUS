@@ -64,16 +64,18 @@ export function ConversationHistory({
         <ScrollArea className="min-h-0 flex-1">
           <ul className="space-y-1 p-2">
             {conversations.map((conversation) => (
-              <li key={conversation.id} className="group relative w-full">
+              <li
+                key={conversation.id}
+                className={cn("relative w-full", !loading && "group")}
+              >
                 <button
                   type="button"
                   disabled={loading}
                   onClick={() => onSelect(conversation.id)}
                   title={conversation.title}
                   className={cn(
-                    "relative w-full min-w-0 overflow-hidden rounded-lg border border-transparent px-3 py-2.5 text-left transition-[padding,colors]",
-                    "group-hover:pr-11",
-                    "hover:bg-sidebar-accent disabled:opacity-50",
+                    "relative w-full min-w-0 overflow-hidden rounded-lg border border-transparent px-3 py-2.5 text-left transition-[padding,colors] disabled:pointer-events-none disabled:opacity-50",
+                    !loading && "group-hover:pr-11 hover:bg-sidebar-accent",
                     conversation.id === activeConversationId &&
                       "border-primary/25 bg-primary/15",
                   )}
@@ -81,7 +83,8 @@ export function ConversationHistory({
                   <span
                     aria-hidden
                     className={cn(
-                      "pointer-events-none absolute inset-y-0 right-0 w-14 opacity-0 transition-opacity group-hover:opacity-100",
+                      "pointer-events-none absolute inset-y-0 right-0 w-14 opacity-0 transition-opacity",
+                      !loading && "group-hover:opacity-100",
                       conversation.id === activeConversationId
                         ? "bg-gradient-to-l from-primary/15 to-transparent"
                         : "bg-gradient-to-l from-sidebar-accent to-transparent",
@@ -99,8 +102,8 @@ export function ConversationHistory({
                   className={cn(
                     "absolute top-1.5 right-1.5 z-10 rounded-md border border-border bg-popover p-0.5 shadow-sm",
                     "pointer-events-none translate-y-1 opacity-0 transition-[opacity,transform]",
-                    "group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100",
-                    "group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100",
+                    !loading &&
+                      "group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100",
                   )}
                 >
                   <Button
