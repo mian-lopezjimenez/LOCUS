@@ -14,6 +14,7 @@ const SYSTEM_PROMPT =
 
 const SIDEBAR_WIDTH = 420;
 const SLIDE_MS = 220;
+const DEFAULT_MODEL = "openclaw/default";
 
 type ChatTurn = {
   id: string;
@@ -25,6 +26,16 @@ type StoredTurn = {
   id: string;
   role: string;
   content: string;
+};
+
+type ModelInfo = {
+  id: string;
+  label: string;
+  supportsVision: boolean;
+};
+
+type AppSettings = {
+  selectedModel: string;
 };
 
 type SidebarBounds = {
@@ -101,11 +112,13 @@ async function placeSidebar(
 function MessageContent({
   role,
   content,
+  streaming,
 }: {
   role: ChatTurn["role"];
   content: string;
+  streaming?: boolean;
 }) {
-  if (role === "assistant") {
+  if (role === "assistant" && !streaming && content) {
     return (
       <div
         className="spotlight-turn__markdown"
@@ -116,28 +129,21 @@ function MessageContent({
   return <p className="spotlight-turn__text">{content}</p>;
 }
 
-function TypingIndicator() {
-  return (
-    <div className="spotlight-turn spotlight-turn--assistant">
-      <div className="spotlight-typing" aria-label="Generando respuesta">
-        <span />
-        <span />
-        <span />
-      </div>
-    </div>
-  );
-}
-
 export function Spotlight() {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<ChatTurn[]>([]);
   const closingRef = useRef(false);
   const isOpenRef = useRef(false);
+  const streamingIdRef = useRef<string | null>(null);
+  const streamUnlistenersRef = useRef<Array<() => void>>([]);
 
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [loading, setLoading] = useState(false);
+  const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -159,6 +165,26 @@ export function Spotlight() {
 
   const focusInput = useCallback(() => {
     inputRef.current?.focus();
+  }, []);
+
+  const cleanupStreamListeners = useCallback(() => {
+    for (const unlisten of streamUnlistenersRef.current) {
+      unlisten();
+    }
+    streamUnlistenersRef.current = [];
+  }, []);
+
+  const appendStreamChunk = useCallback((chunk: string) => {
+    const id = streamingIdRef.current;
+    if (!id) return;
+
+    setMessages((prev) => {
+      const updated = prev.map((m) =>
+        m.id === id ? { ...m, content: m.content + chunk } : m,
+      );
+      messagesRef.current = updated;
+      return updated;
+    });
   }, []);
 
   const openPanel = useCallback(async () => {
@@ -194,12 +220,18 @@ export function Spotlight() {
   }, []);
 
   useEffect(() => {
-    void invoke<StoredTurn[]>("load_spotlight_session").then((stored) => {
+    void Promise.all([
+      invoke<StoredTurn[]>("load_spotlight_session"),
+      invoke<AppSettings>("load_settings"),
+      invoke<ModelInfo[]>("list_chat_models"),
+    ]).then(([stored, settings, modelList]) => {
       if (stored.length > 0) {
         const turns = mapStoredTurns(stored);
         setMessages(turns);
         messagesRef.current = turns;
       }
+      setSelectedModel(settings.selectedModel || DEFAULT_MODEL);
+      setModels(modelList);
     });
   }, []);
 
@@ -230,52 +262,110 @@ export function Spotlight() {
     scrollToBottom();
   }, [messages, loading, scrollToBottom]);
 
+  useEffect(() => () => cleanupStreamListeners(), [cleanupStreamListeners]);
+
+  const handleModelChange = async (modelId: string) => {
+    setSelectedModel(modelId);
+    await invoke("save_settings", {
+      settings: { selectedModel: modelId },
+    });
+  };
+
+  const startNewChat = async () => {
+    if (loading) return;
+    if (messages.length > 0) {
+      const ok = window.confirm("¿Empezar una conversación nueva? Se borrará el historial actual.");
+      if (!ok) return;
+    }
+    setMessages([]);
+    messagesRef.current = [];
+    await persistMessages([]);
+    focusInput();
+  };
+
+  const stopGeneration = () => {
+    void invoke("cancel_chat_generation");
+  };
+
   const submit = async () => {
     const text = query.trim();
     if (!text || loading) return;
 
     const userTurn: ChatTurn = { id: newId(), role: "user", content: text };
-    const nextMessages = [...messages, userTurn];
+    const assistantId = newId();
+    const assistantTurn: ChatTurn = {
+      id: assistantId,
+      role: "assistant",
+      content: "",
+    };
+    const nextMessages = [...messages, userTurn, assistantTurn];
 
     setQuery("");
     setMessages(nextMessages);
     messagesRef.current = nextMessages;
     setLoading(true);
+    streamingIdRef.current = assistantId;
+    setStreamingId(assistantId);
+    cleanupStreamListeners();
+
+    const unlistenChunk = await listen<string>("chat:chunk", (event) => {
+      appendStreamChunk(event.payload);
+    });
+    const unlistenCancelled = await listen("chat:cancelled", () => {
+      cleanupStreamListeners();
+    });
+
+    streamUnlistenersRef.current = [unlistenChunk, unlistenCancelled];
 
     try {
       const apiMessages = [
         { role: "system", content: SYSTEM_PROMPT },
-        ...nextMessages
+        ...messages
           .filter((m) => m.role !== "error")
           .map((m) => ({ role: m.role, content: m.content })),
+        { role: "user", content: text },
       ];
 
-      const answer = await invoke<string>("send_chat_message", {
+      const answer = await invoke<string>("send_chat_message_stream", {
         messages: apiMessages,
+        model: selectedModel,
       });
 
-      const assistantTurn: ChatTurn = {
-        id: newId(),
-        role: "assistant",
-        content: answer || "(sin respuesta)",
-      };
-      const withAnswer = [...nextMessages, assistantTurn];
-      setMessages(withAnswer);
-      messagesRef.current = withAnswer;
-      await persistMessages(withAnswer);
+      setMessages((prev) => {
+        const streamed =
+          prev.find((m) => m.id === assistantId)?.content ?? "";
+        const finalContent = answer || streamed;
+        if (!finalContent.trim()) {
+          const updated = prev.filter((m) => m.id !== assistantId);
+          messagesRef.current = updated;
+          return updated;
+        }
+        const updated = prev.map((m) =>
+          m.id === assistantId ? { ...m, content: finalContent } : m,
+        );
+        messagesRef.current = updated;
+        return updated;
+      });
+      await persistMessages(messagesRef.current);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Error al contactar con OpenClaw";
+      const withoutAssistant = messagesRef.current.filter(
+        (m) => m.id !== assistantId,
+      );
       const errorTurn: ChatTurn = {
         id: newId(),
         role: "error",
         content: message,
       };
-      const withError = [...nextMessages, errorTurn];
+      const withError = [...withoutAssistant, errorTurn];
       setMessages(withError);
       messagesRef.current = withError;
       await persistMessages(withError);
     } finally {
+      cleanupStreamListeners();
+      streamingIdRef.current = null;
+      setStreamingId(null);
       setLoading(false);
       focusInput();
     }
@@ -292,16 +382,49 @@ export function Spotlight() {
     <div className="spotlight-root">
       <div className="spotlight-sidebar">
         <header className="spotlight-header">
-          <span className="spotlight-header__title">LOCUS</span>
-          <button
-            type="button"
-            className="spotlight-btn spotlight-btn--icon"
-            title="Modo completo (Fase 3)"
-            onClick={() => void openFullView()}
-            aria-label="Abrir modo completo"
-          >
-            ⤢
-          </button>
+          <div className="spotlight-header__left">
+            <span className="spotlight-header__title">LOCUS</span>
+            <select
+              className="spotlight-header__model"
+              value={selectedModel}
+              onChange={(e) => void handleModelChange(e.target.value)}
+              disabled={loading}
+              title="Modelo de IA"
+              aria-label="Seleccionar modelo"
+            >
+              {models.length === 0 ? (
+                <option value={selectedModel}>{selectedModel}</option>
+              ) : (
+                models.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.label}
+                    {model.supportsVision ? " · visión" : ""}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+          <div className="spotlight-header__actions">
+            <button
+              type="button"
+              className="spotlight-btn spotlight-btn--icon"
+              title="Nueva conversación"
+              onClick={() => void startNewChat()}
+              disabled={loading}
+              aria-label="Nueva conversación"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              className="spotlight-btn spotlight-btn--icon"
+              title="Modo completo (Fase 3)"
+              onClick={() => void openFullView()}
+              aria-label="Abrir modo completo"
+            >
+              ⤢
+            </button>
+          </div>
         </header>
 
         <div className="spotlight-messages">
@@ -310,20 +433,23 @@ export function Spotlight() {
               key={msg.id}
               className={`spotlight-turn spotlight-turn--${msg.role}`}
             >
-              <MessageContent role={msg.role} content={msg.content} />
+              <MessageContent
+                role={msg.role}
+                content={msg.content}
+                streaming={loading && msg.id === streamingId}
+              />
             </div>
           ))}
-          {loading && <TypingIndicator />}
           <div ref={bottomRef} className="spotlight-messages__anchor" />
         </div>
 
         <footer className="spotlight-composer">
-          <input
+          <textarea
             ref={inputRef}
             className="spotlight-composer__input"
-            type="text"
             placeholder="Pregunta a LOCUS…"
             value={query}
+            rows={1}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -335,15 +461,27 @@ export function Spotlight() {
             spellCheck={false}
             autoComplete="off"
           />
-          <button
-            type="button"
-            className="spotlight-btn spotlight-btn--send"
-            onClick={() => void submit()}
-            disabled={loading || !query.trim()}
-            aria-label="Enviar"
-          >
-            →
-          </button>
+          {loading ? (
+            <button
+              type="button"
+              className="spotlight-btn spotlight-btn--stop"
+              onClick={() => void stopGeneration()}
+              aria-label="Detener generación"
+              title="Detener"
+            >
+              ⏹
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="spotlight-btn spotlight-btn--send"
+              onClick={() => void submit()}
+              disabled={!query.trim()}
+              aria-label="Enviar"
+            >
+              →
+            </button>
+          )}
         </footer>
       </div>
     </div>

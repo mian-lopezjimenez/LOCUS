@@ -1,9 +1,12 @@
+mod chat_cancel;
+mod ollama;
 mod openclaw_chat;
+mod settings;
 mod spotlight_session;
 mod spotlight_window;
 mod supervisor;
 
-use openclaw_chat::{send_chat_completion, ChatMessage};
+use chat_cancel::ChatCancelState;
 use spotlight_session::{load_spotlight_session, save_spotlight_session};
 use spotlight_window::{read_gateway_token, toggle as toggle_spotlight};
 use supervisor::get_service_health;
@@ -19,14 +22,10 @@ fn get_gateway_token() -> Option<String> {
     read_gateway_token()
 }
 
-#[tauri::command]
-async fn send_chat_message(messages: Vec<ChatMessage>) -> Result<String, String> {
-    send_chat_completion(messages).await
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(ChatCancelState::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -94,7 +93,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_service_status,
             get_gateway_token,
-            send_chat_message,
+            openclaw_chat::send_chat_message,
+            openclaw_chat::send_chat_message_stream,
+            chat_cancel::cancel_chat_generation,
+            settings::load_settings,
+            settings::save_settings,
+            ollama::list_chat_models,
             load_spotlight_session,
             save_spotlight_session
         ])

@@ -29,10 +29,50 @@ body,
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  height: 40px;
-  padding: 0 12px;
+  min-height: 40px;
+  padding: 6px 12px;
+  gap: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: #1e1f22;
+}
+
+.spotlight-header__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.spotlight-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.spotlight-header__model {
+  flex: 1;
+  min-width: 0;
+  max-width: 220px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: #2a2b2f;
+  color: #e8eaed;
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.spotlight-header__model:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.spotlight-header__model:focus {
+  border-color: rgba(100, 140, 255, 0.45);
 }
 
 .spotlight-header__title {
@@ -159,7 +199,7 @@ body,
 
 .spotlight-composer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   flex-shrink: 0;
   padding: 12px;
@@ -178,6 +218,9 @@ body,
   font-size: 0.92rem;
   padding: 10px 12px;
   min-width: 0;
+  resize: none;
+  max-height: 120px;
+  line-height: 1.4;
 }
 
 .spotlight-composer__input::placeholder {
@@ -222,6 +265,18 @@ body,
 
 .spotlight-btn--send:hover:not(:disabled) {
   background: #4a7af5;
+}
+
+.spotlight-btn--stop {
+  width: 36px;
+  height: 36px;
+  font-size: 0.85rem;
+  background: rgba(242, 139, 130, 0.25);
+  border: 1px solid rgba(242, 139, 130, 0.35);
+}
+
+.spotlight-btn--stop:hover {
+  background: rgba(242, 139, 130, 0.4);
 }
 
 .spotlight-typing {
