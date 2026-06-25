@@ -7,6 +7,7 @@ import {
   ChatComposer,
   MessageList,
 } from "@/components/chat/ChatComposer";
+import { DropOverlay } from "@/components/chat/AttachmentChips";
 import { ConversationHistory } from "@/components/chat/ConversationHistory";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { IconButton } from "@/components/chat/SpotlightHeader";
@@ -44,9 +45,6 @@ function SpotlightChatView({
   onRemoveAttachment,
   onPickFiles,
   onPaste,
-  onDragOver,
-  onDragLeave,
-  onDrop,
   dragOver,
   attachmentError,
 }: {
@@ -68,14 +66,12 @@ function SpotlightChatView({
   onRemoveAttachment: (id: string) => void;
   onPickFiles: () => void;
   onPaste: (event: React.ClipboardEvent) => void;
-  onDragOver: (event: React.DragEvent) => void;
-  onDragLeave: (event: React.DragEvent) => void;
-  onDrop: (event: React.DragEvent) => void;
   dragOver: boolean;
   attachmentError: string | null;
 }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+      <DropOverlay active={dragOver} />
       <header className="flex shrink-0 items-center justify-end border-b border-border bg-card px-2 py-1">
         <IconButton
           label="Abrir modo completo"
@@ -123,10 +119,6 @@ function SpotlightChatView({
         onRemoveAttachment={onRemoveAttachment}
         onPickFiles={onPickFiles}
         onPaste={onPaste}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        dragOver={dragOver}
         attachmentError={attachmentError}
       />
     </div>
@@ -191,9 +183,6 @@ export function Spotlight() {
     removeAttachment,
     clearAttachments,
     handlePaste,
-    handleDragOver,
-    handleDragLeave,
-    handleDrop,
   } = useComposerAttachments({
     disabled: loading,
     onError: setAttachmentError,
@@ -288,9 +277,6 @@ export function Spotlight() {
                 onRemoveAttachment={removeAttachment}
                 onPickFiles={() => void pickFiles()}
                 onPaste={handlePaste}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
                 dragOver={dragOver}
                 attachmentError={attachmentError}
               />

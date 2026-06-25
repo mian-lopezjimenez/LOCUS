@@ -15,6 +15,7 @@ import { newId } from "@/utils/id";
 import { openClawTurnSessionKey } from "@/lib/openclawSession";
 import { buildDisplayContent } from "@/utils/attachments";
 import { trimContextForApi } from "@/utils/contextLimits";
+import { resolvePdfAttachments } from "@/utils/pdfAttachments";
 import { findRetryContext } from "@/utils/retry";
 import {
   applyVisionDescription,
@@ -105,7 +106,16 @@ export function useChatStream({
       const userId = newId();
       let persistedAttachments = messageAttachments;
 
-      if (activeConversationId && messageAttachments.some((a) => a.kind === "image" && a.dataUrl)) {
+      if (
+        activeConversationId &&
+        messageAttachments.some(
+          (attachment) =>
+            (attachment.kind === "image" && attachment.dataUrl) ||
+            (attachment.kind === "pdf" &&
+              attachment.path &&
+              (attachment.path.includes("\\") || /^[a-zA-Z]:/.test(attachment.path))),
+        )
+      ) {
         persistedAttachments = await persistTurnAttachments(
           activeConversationId,
           userId,
@@ -145,15 +155,16 @@ export function useChatStream({
       streamUnlistenersRef.current = [unlistenChunk, unlistenCancelled];
 
       try {
+        const apiAttachments = await resolvePdfAttachments(persistedAttachments);
+
         const plan = inspectTurn({
           userText: trimmed,
-          attachments: persistedAttachments,
+          attachments: apiAttachments,
           chatModelId: selectedModel,
           models,
         });
 
         let visionDescription: string | undefined;
-        let finalAttachments = persistedAttachments;
 
         if (plan.kind === "vision_then_chat") {
           if (!isVisionCapable(models)) {
@@ -164,20 +175,23 @@ export function useChatStream({
 
           setProcessingPhase("vision");
           visionDescription = await runVisionStep(plan, trimmed);
-          finalAttachments = applyVisionDescription(
-            persistedAttachments,
-            visionDescription,
-          );
 
-          setMessages((prev) => {
-            const updated = prev.map((message) =>
-              message.id === userId
-                ? { ...message, attachments: finalAttachments }
-                : message,
+          if (persistedAttachments.some((attachment) => attachment.kind === "image")) {
+            const withVision = applyVisionDescription(
+              persistedAttachments,
+              visionDescription,
             );
-            messagesRef.current = updated;
-            return updated;
-          });
+
+            setMessages((prev) => {
+              const updated = prev.map((message) =>
+                message.id === userId
+                  ? { ...message, attachments: withVision }
+                  : message,
+              );
+              messagesRef.current = updated;
+              return updated;
+            });
+          }
         }
 
         const trimmedContext = trimContextForApi(context, {

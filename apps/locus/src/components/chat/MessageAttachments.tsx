@@ -51,6 +51,10 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
     (attachment): attachment is MessageAttachment & { kind: "text" } =>
       attachment.kind === "text",
   );
+  const pdfs = attachments.filter(
+    (attachment): attachment is MessageAttachment & { kind: "pdf" } =>
+      attachment.kind === "pdf",
+  );
 
   return (
     <div className="mb-2 flex flex-col gap-2">
@@ -60,6 +64,12 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
       {texts.map((attachment) => (
         <p key={attachment.name} className="text-xs text-muted-foreground">
           📎 {attachment.name}
+        </p>
+      ))}
+      {pdfs.map((attachment) => (
+        <p key={attachment.name} className="text-xs text-muted-foreground">
+          📄 {attachment.name}
+          {attachment.useVision ? " (análisis visual)" : ""}
         </p>
       ))}
     </div>

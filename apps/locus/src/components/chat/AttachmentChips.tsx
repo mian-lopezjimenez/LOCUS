@@ -1,4 +1,4 @@
-import { FileText, ImageIcon, X } from "lucide-react";
+import { FileText, FileType, ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PendingAttachment } from "@/types/attachment";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,8 @@ export function AttachmentChips({ attachments, onRemove }: AttachmentChipsProps)
               />
               <ImageIcon className="size-3 shrink-0 text-muted-foreground" />
             </>
+          ) : attachment.kind === "pdf" ? (
+            <FileType className="size-3 shrink-0 text-muted-foreground" />
           ) : (
             <FileText className="size-3 shrink-0 text-muted-foreground" />
           )}
@@ -72,10 +74,10 @@ export function DropOverlay({ active }: DropOverlayProps) {
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md border-2 border-dashed border-primary/50 bg-primary/10 text-sm text-primary",
+        "pointer-events-none absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-primary/50 bg-primary/10 text-sm text-primary",
       )}
     >
-      Suelta archivos aquí
+      Suelta imágenes, PDF o archivos aquí
     </div>
   );
 }

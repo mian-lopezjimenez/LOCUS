@@ -21,6 +21,15 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 
 const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "gif"]);
+const PDF_EXTENSION = "pdf";
+
+export const TEXT_FILE_EXTENSIONS = [...TEXT_EXTENSIONS];
+export const IMAGE_FILE_EXTENSIONS = [...IMAGE_EXTENSIONS];
+export const ALL_ATTACHMENT_EXTENSIONS = [
+  ...TEXT_FILE_EXTENSIONS,
+  ...IMAGE_FILE_EXTENSIONS,
+  PDF_EXTENSION,
+];
 
 export function extensionOf(name: string): string | null {
   const dot = name.lastIndexOf(".");
@@ -38,17 +47,35 @@ export function isImageFileName(name: string): boolean {
   return ext !== null && IMAGE_EXTENSIONS.has(ext);
 }
 
+export function isPdfFileName(name: string): boolean {
+  return extensionOf(name) === PDF_EXTENSION;
+}
+
 export function buildDisplayContent(
   text: string,
   attachments: MessageAttachment[],
 ): string {
-  const labels = attachments.map((attachment) =>
-    attachment.kind === "text" ? `📎 ${attachment.name}` : `🖼 ${attachment.name}`,
-  );
+  const labels = attachments.map((attachment) => {
+    if (attachment.kind === "text") return `📎 ${attachment.name}`;
+    if (attachment.kind === "pdf") return `📄 ${attachment.name}`;
+    return `🖼 ${attachment.name}`;
+  });
   const trimmed = text.trim();
   if (labels.length === 0) return trimmed;
   if (!trimmed) return labels.join("\n");
   return `${labels.join("\n")}\n\n${trimmed}`;
+}
+
+function appendPdfAttachments(
+  text: string,
+  attachments: MessageAttachment[],
+): string {
+  let body = text.trim();
+  for (const attachment of attachments) {
+    if (attachment.kind !== "pdf" || attachment.useVision) continue;
+    body += `\n\n--- ${attachment.name} ---\n${attachment.text}`;
+  }
+  return body;
 }
 
 function appendTextAttachments(
@@ -91,7 +118,10 @@ export async function buildApiContent(
       attachment.kind === "image",
   );
 
-  const textBody = appendTextAttachments(text, attachments);
+  const textBody = appendPdfAttachments(
+    appendTextAttachments(text, attachments),
+    attachments,
+  );
 
   if (images.length === 0) {
     return textBody;

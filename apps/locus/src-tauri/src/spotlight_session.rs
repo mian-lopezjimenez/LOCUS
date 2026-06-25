@@ -22,6 +22,10 @@ pub struct StoredAttachment {
     pub content: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vision_description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page_count: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub use_vision: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

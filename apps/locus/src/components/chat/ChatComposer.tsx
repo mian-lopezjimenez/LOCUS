@@ -2,7 +2,6 @@ import { Paperclip, Square, ArrowRight } from "lucide-react";
 import { useEffect, useRef } from "react";
 import {
   AttachmentChips,
-  DropOverlay,
   VisionNotice,
 } from "@/components/chat/AttachmentChips";
 import { ModelSelect } from "@/components/chat/SpotlightHeader";
@@ -31,10 +30,6 @@ type ChatComposerProps = {
   onRemoveAttachment: (id: string) => void;
   onPickFiles: () => void;
   onPaste: (event: React.ClipboardEvent) => void;
-  onDragOver: (event: React.DragEvent) => void;
-  onDragLeave: (event: React.DragEvent) => void;
-  onDrop: (event: React.DragEvent) => void;
-  dragOver: boolean;
   attachmentError?: string | null;
 };
 
@@ -52,13 +47,11 @@ export function ChatComposer({
   onRemoveAttachment,
   onPickFiles,
   onPaste,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  dragOver,
   attachmentError,
 }: ChatComposerProps) {
-  const needsVision = hasImageAttachments(attachments);
+  const needsVision =
+    hasImageAttachments(attachments) ||
+    attachments.some((attachment) => attachment.kind === "pdf" && attachment.useVision);
   const visionUnavailable = needsVision && !isVisionCapable(models);
   const canSubmit =
     (query.trim() || attachments.length > 0) && !visionUnavailable;
@@ -71,13 +64,7 @@ export function ChatComposer({
       )}
       <AttachmentChips attachments={attachments} onRemove={onRemoveAttachment} />
 
-      <div
-        className="relative flex items-end gap-2"
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-      >
-        <DropOverlay active={dragOver} />
+      <div className="relative flex items-end gap-2">
         <Textarea
           ref={inputRef}
           placeholder="Pregunta a LOCUS…"

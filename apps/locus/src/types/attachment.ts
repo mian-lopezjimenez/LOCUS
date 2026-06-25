@@ -14,7 +14,16 @@ export type ImageAttachment = {
   visionDescription?: string;
 };
 
-export type MessageAttachment = TextAttachment | ImageAttachment;
+export type PdfAttachment = {
+  kind: "pdf";
+  name: string;
+  path?: string;
+  text: string;
+  pageCount: number;
+  useVision: boolean;
+};
+
+export type MessageAttachment = TextAttachment | ImageAttachment | PdfAttachment;
 
 export type PendingTextAttachment = {
   id: string;
@@ -32,13 +41,29 @@ export type PendingImageAttachment = {
   sizeBytes: number;
 };
 
-export type PendingAttachment = PendingTextAttachment | PendingImageAttachment;
+export type PendingPdfAttachment = {
+  id: string;
+  kind: "pdf";
+  name: string;
+  path?: string;
+  text: string;
+  pageCount: number;
+  useVision: boolean;
+  sizeBytes: number;
+};
+
+export type PendingAttachment =
+  | PendingTextAttachment
+  | PendingImageAttachment
+  | PendingPdfAttachment;
 
 export type StoredAttachment = {
-  kind: "text" | "image";
+  kind: "text" | "image" | "pdf";
   name: string;
   mimeType?: string;
   path?: string;
   content?: string;
   visionDescription?: string;
+  pageCount?: number;
+  useVision?: boolean;
 };

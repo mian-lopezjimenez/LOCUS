@@ -5,6 +5,8 @@ use tauri::{AppHandle, Manager};
 
 const MAX_TEXT_BYTES: usize = 512_000;
 const MAX_IMAGE_BYTES: usize = 8_000_000;
+const MAX_PDF_BYTES: usize = 10_000_000;
+const MAX_PDF_EXTRACTED_CHARS: usize = 100_000;
 
 const TEXT_EXTENSIONS: &[&str] = &[
     "txt", "md", "py", "json", "js", "ts", "tsx", "jsx", "rs", "go", "java", "c", "cpp", "h",
@@ -27,6 +29,21 @@ pub struct ReadImageAttachmentResult {
     pub mime_type: String,
     pub data_url: String,
     pub size_bytes: usize,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadPdfAttachmentResult {
+    pub name: String,
+    pub text: String,
+    pub page_count: usize,
+    pub size_bytes: usize,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadPdfBytesResult {
+    pub bytes: Vec<u8>,
 }
 
 fn extension_of(path: &str) -> Option<String> {
@@ -189,4 +206,115 @@ pub async fn load_image_data_url(app: AppHandle, relative_path: String) -> Resul
     let ext = extension_of(&relative_path).unwrap_or_else(|| "png".to_string());
     let mime = mime_for_extension(&ext);
     Ok(format!("data:{mime};base64,{}", STANDARD.encode(&bytes)))
+}
+
+fn read_pdf_file(path: &str) -> Result<ReadPdfAttachmentResult, String> {
+    let ext = extension_of(path).ok_or("Archivo sin extensión")?;
+    if ext != "pdf" {
+        return Err(format!("Extensión .{ext} no soportada para PDF"));
+    }
+
+    let bytes = fs::read(path).map_err(|e| format!("No se pudo leer el PDF: {e}"))?;
+    let size_bytes = bytes.len();
+    if size_bytes > MAX_PDF_BYTES {
+        return Err(format!(
+            "El PDF supera el límite de {} MB",
+            MAX_PDF_BYTES / 1_000_000
+        ));
+    }
+
+    let page_count = lopdf::Document::load_mem(&bytes)
+        .map(|doc| doc.get_pages().len())
+        .unwrap_or(0);
+
+    let mut text = pdf_extract::extract_text_from_mem(&bytes)
+        .map_err(|e| format!("No se pudo extraer texto del PDF: {e}"))?
+        .trim()
+        .to_string();
+
+    if text.len() > MAX_PDF_EXTRACTED_CHARS {
+        text.truncate(MAX_PDF_EXTRACTED_CHARS);
+        text.push_str("\n\n[… texto truncado por límite de tamaño …]");
+    }
+
+    Ok(ReadPdfAttachmentResult {
+        name: file_name_of(path, "documento.pdf"),
+        text,
+        page_count,
+        size_bytes,
+    })
+}
+
+#[tauri::command]
+pub async fn read_pdf_attachment(path: String) -> Result<ReadPdfAttachmentResult, String> {
+    read_pdf_file(&path)
+}
+
+#[tauri::command]
+pub async fn read_pdf_bytes(path: String) -> Result<ReadPdfBytesResult, String> {
+    let ext = extension_of(&path).ok_or("Archivo sin extensión")?;
+    if ext != "pdf" {
+        return Err(format!("Extensión .{ext} no soportada para PDF"));
+    }
+
+    let bytes = fs::read(&path).map_err(|e| format!("No se pudo leer el PDF: {e}"))?;
+    if bytes.len() > MAX_PDF_BYTES {
+        return Err(format!(
+            "El PDF supera el límite de {} MB",
+            MAX_PDF_BYTES / 1_000_000
+        ));
+    }
+
+    Ok(ReadPdfBytesResult { bytes })
+}
+
+#[tauri::command]
+pub async fn persist_pdf_attachment(
+    app: AppHandle,
+    conversation_id: String,
+    message_id: String,
+    source_path: String,
+) -> Result<String, String> {
+    let ext = extension_of(&source_path).ok_or("Archivo sin extensión")?;
+    if ext != "pdf" {
+        return Err("Solo se pueden persistir archivos PDF".to_string());
+    }
+
+    let bytes = fs::read(&source_path).map_err(|e| format!("No se pudo leer el PDF: {e}"))?;
+    if bytes.len() > MAX_PDF_BYTES {
+        return Err(format!(
+            "El PDF supera el límite de {} MB",
+            MAX_PDF_BYTES / 1_000_000
+        ));
+    }
+
+    let name = sanitize_filename(&file_name_of(&source_path, "documento.pdf"));
+    let file_name = if extension_of(&name).is_some() {
+        name
+    } else {
+        format!("{name}.pdf")
+    };
+
+    let dir = attachments_root(&app)?
+        .join(&conversation_id)
+        .join(&message_id);
+    fs::create_dir_all(&dir).map_err(|e| format!("No se pudo guardar el PDF: {e}"))?;
+
+    let file_path = dir.join(&file_name);
+    fs::write(&file_path, bytes).map_err(|e| format!("No se pudo guardar el PDF: {e}"))?;
+
+    Ok(format!("{conversation_id}/{message_id}/{file_name}"))
+}
+
+#[tauri::command]
+pub async fn load_pdf_bytes(app: AppHandle, relative_path: String) -> Result<Vec<u8>, String> {
+    let path = attachments_root(&app)?.join(&relative_path);
+    let bytes = fs::read(&path).map_err(|e| format!("No se pudo cargar el PDF: {e}"))?;
+    if bytes.len() > MAX_PDF_BYTES {
+        return Err(format!(
+            "El PDF supera el límite de {} MB",
+            MAX_PDF_BYTES / 1_000_000
+        ));
+    }
+    Ok(bytes)
 }

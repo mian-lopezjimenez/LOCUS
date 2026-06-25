@@ -33,6 +33,12 @@ export function trimContextForApi(
         ? truncateText(message.prompt, maxChars)
         : undefined,
       attachments: message.attachments?.map((attachment) => {
+        if (attachment.kind === "pdf") {
+          return {
+            ...attachment,
+            text: truncateText(attachment.text, maxChars),
+          };
+        }
         if (attachment.kind !== "image" || !attachment.visionDescription) {
           return attachment;
         }
