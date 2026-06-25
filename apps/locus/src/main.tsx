@@ -2,7 +2,9 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import App from "./App";
-import { Spotlight } from "./Spotlight";
+import { Spotlight } from "@/features/spotlight";
+import { AppProviders } from "@/providers/AppProviders";
+import "@/index.css";
 
 async function bootstrap() {
   const label = (await getCurrentWindow()).label;
@@ -14,7 +16,9 @@ async function bootstrap() {
 
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      {label === "spotlight" ? <Spotlight /> : <App />}
+      <AppProviders>
+        {label === "spotlight" ? <Spotlight /> : <App />}
+      </AppProviders>
     </React.StrictMode>,
   );
 }

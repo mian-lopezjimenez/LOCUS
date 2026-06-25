@@ -510,15 +510,7 @@ Importar con `workspace:*` en `package.json`. No duplicar tipos entre app y pack
 
 ## 20. Deuda conocida (migración gradual)
 
-El código actual (`Spotlight.tsx` monolítico, CSS plano) es MVP válido. Al tocar una zona:
-
-1. Extraer types → `types/`.
-2. Extraer utils → `utils/`.
-3. Extraer servicios → `services/`.
-4. Dividir componentes → `components/chat/`.
-5. Sustituir CSS custom por wrappers shadcn + Tailwind (sin tocar `components/ui/`).
-
-No hacer big-bang refactor; migrar **al editar** cada archivo.
+La estructura base de [PATTERNS.md](./PATTERNS.md) está aplicada en `apps/locus/src` (types, utils, services, hooks, components, features/spotlight, shadcn). Al añadir features nuevas, seguir el mismo esquema sin reintroducir CSS plano ni `invoke` en componentes.
 
 ---
 
