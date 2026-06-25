@@ -105,9 +105,8 @@ export function Spotlight() {
   };
 
   return (
-    <div className="h-full bg-background p-2 text-foreground">
-      <div className="flex h-full overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-        <ConversationHistory
+    <div className="flex h-full overflow-hidden bg-background text-foreground">
+      <ConversationHistory
           conversations={conversations}
           activeConversationId={activeConversationId}
           loading={loading}
@@ -166,7 +165,6 @@ export function Spotlight() {
             onStop={stopGeneration}
           />
         </div>
-      </div>
     </div>
   );
 }

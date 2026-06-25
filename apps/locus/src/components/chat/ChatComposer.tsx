@@ -1,6 +1,7 @@
 import { Square, ArrowRight } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { ChatRole } from "@/types/chat";
@@ -100,20 +101,22 @@ export function MessageList({
   }, [messages, loading]);
 
   return (
-    <div className="message-list-scroll relative flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden px-3 py-3">
-      {messages.length === 0 && !loading && (
-        <p className="m-auto text-center text-sm text-muted-foreground">
-          Escribe una pregunta para empezar.
-        </p>
-      )}
-      {messages.map((message) =>
-        renderMessage({
-          ...message,
-          streaming: loading && message.id === streamingId,
-        }),
-      )}
-      <div ref={bottomRef} className="h-px shrink-0" />
-    </div>
+    <ScrollArea className="min-h-0 flex-1">
+      <div className="flex flex-col gap-3 px-3 py-3">
+        {messages.length === 0 && !loading && (
+          <p className="m-auto text-center text-sm text-muted-foreground">
+            Escribe una pregunta para empezar.
+          </p>
+        )}
+        {messages.map((message) =>
+          renderMessage({
+            ...message,
+            streaming: loading && message.id === streamingId,
+          }),
+        )}
+        <div ref={bottomRef} className="h-px shrink-0" />
+      </div>
+    </ScrollArea>
   );
 }
 

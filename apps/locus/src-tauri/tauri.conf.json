@@ -28,7 +28,7 @@
         "resizable": false,
         "decorations": false,
         "transparent": false,
-        "backgroundColor": "#1f2028",
+        "backgroundColor": "#1a1b22",
         "alwaysOnTop": true,
         "visible": false,
         "skipTaskbar": true,

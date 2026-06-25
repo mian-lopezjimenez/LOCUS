@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
-import { renderMarkdown } from "@/lib/marked";
+import { renderMarkdownParts, type MarkdownPart } from "@/lib/marked";
 import { useTheme } from "@/providers/ThemeProvider";
 
 const STREAM_THROTTLE_MS = 80;
 
-export function useMarkdownHtml(
+export function useMarkdownParts(
   content: string,
   enabled: boolean,
   streaming = false,
-): string {
+): MarkdownPart[] {
   const { resolved } = useTheme();
-  const [html, setHtml] = useState("");
+  const [parts, setParts] = useState<MarkdownPart[]>([]);
 
   useEffect(() => {
     if (!enabled || !content) {
-      setHtml("");
+      setParts([]);
       return;
     }
 
@@ -22,9 +22,9 @@ export function useMarkdownHtml(
     const delay = streaming ? STREAM_THROTTLE_MS : 0;
 
     const timer = window.setTimeout(() => {
-      void renderMarkdown(content, resolved).then((result) => {
+      void renderMarkdownParts(content, resolved).then((result) => {
         if (!cancelled) {
-          setHtml(result);
+          setParts(result);
         }
       });
     }, delay);
@@ -35,5 +35,5 @@ export function useMarkdownHtml(
     };
   }, [content, enabled, streaming, resolved]);
 
-  return html;
+  return parts;
 }

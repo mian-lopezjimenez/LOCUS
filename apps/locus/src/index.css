@@ -134,29 +134,6 @@
     font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
   }
 
-  .code-block-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 60%, transparent)
-      transparent;
-  }
-
-  .code-block-scroll::-webkit-scrollbar {
-    height: 6px;
-  }
-
-  .code-block-scroll::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .code-block-scroll::-webkit-scrollbar-thumb {
-    border-radius: 9999px;
-    background: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
-  }
-
-  .code-block-scroll::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in oklch, var(--muted-foreground) 80%, transparent);
-  }
-
   .chat-markdown .shiki-block {
     background-color: var(--code-block-bg) !important;
   }

@@ -43,15 +43,15 @@ export function ConversationHistory({
         style={{ width: HISTORY_SIDEBAR_WIDTH }}
         aria-label="Historial de conversaciones"
       >
-        <div className="flex items-center justify-between border-b border-sidebar-border px-3 py-2.5">
-          <span className="text-sm font-medium text-muted-foreground">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-sidebar-border px-3 py-2.5">
+          <span className="shrink-0 text-sm font-medium text-muted-foreground">
             Chats
           </span>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 gap-1 text-primary"
+            className="h-8 shrink-0 gap-1 text-primary"
             onClick={onCreate}
             disabled={loading}
             title="Nueva conversación"
@@ -61,44 +61,65 @@ export function ConversationHistory({
           </Button>
         </div>
 
-        <ScrollArea className="min-h-0 min-w-0 flex-1 [&_[data-slot=scroll-area-viewport]]:min-w-0">
+        <ScrollArea className="min-h-0 flex-1">
           <ul className="space-y-1 p-2">
             {conversations.map((conversation) => (
-              <li
-                key={conversation.id}
-                className="group flex min-w-0 items-stretch gap-1"
-              >
+              <li key={conversation.id} className="group relative w-full">
                 <button
                   type="button"
                   disabled={loading}
                   onClick={() => onSelect(conversation.id)}
                   title={conversation.title}
                   className={cn(
-                    "flex min-w-0 flex-1 flex-col items-start gap-0.5 overflow-hidden rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors",
+                    "relative w-full min-w-0 overflow-hidden rounded-lg border border-transparent px-3 py-2.5 text-left transition-[padding,colors]",
+                    "group-hover:pr-11",
                     "hover:bg-sidebar-accent disabled:opacity-50",
                     conversation.id === activeConversationId &&
                       "border-primary/25 bg-primary/15",
                   )}
                 >
-                  <span className="block w-full truncate text-sm">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "pointer-events-none absolute inset-y-0 right-0 w-14 opacity-0 transition-opacity group-hover:opacity-100",
+                      conversation.id === activeConversationId
+                        ? "bg-gradient-to-l from-primary/15 to-transparent"
+                        : "bg-gradient-to-l from-sidebar-accent to-transparent",
+                    )}
+                  />
+                  <p className="relative overflow-hidden text-ellipsis whitespace-nowrap text-sm">
                     {conversation.title}
-                  </span>
-                  <span className="block w-full truncate text-xs text-muted-foreground">
+                  </p>
+                  <p className="relative mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted-foreground">
                     {formatConversationDate(conversation.updatedAt)}
-                  </span>
+                  </p>
                 </button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                  title="Eliminar conversación"
-                  aria-label={`Eliminar ${conversation.title}`}
-                  disabled={loading}
-                  onClick={() => setPendingDelete(conversation)}
+
+                <div
+                  className={cn(
+                    "absolute top-1.5 right-1.5 z-10 rounded-md border border-border bg-popover p-0.5 shadow-sm",
+                    "pointer-events-none translate-y-1 opacity-0 transition-[opacity,transform]",
+                    "group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100",
+                    "group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100",
+                  )}
                 >
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    className="hover:bg-destructive/15"
+                    title="Eliminar conversación"
+                    aria-label={`Eliminar ${conversation.title}`}
+                    disabled={loading}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setPendingDelete(conversation);
+                    }}
+                  >
+                    <Trash2 className="size-3.5 text-destructive" />
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
