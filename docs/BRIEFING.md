@@ -16,7 +16,7 @@ Tres formas de interactuar:
 
 **Principio rector:** 100 % local. Modelos locales, voz local, sin APIs en la nube.
 
-**Estado actual del entorno:** Ollama instalado ✅ · OpenClaw sin instalar (empezar de cero).
+**Estado actual del entorno:** Ollama instalado ✅ · OpenClaw instalado y configurado ✅ · LOCUS en desarrollo (barra prompt, chat vía gateway).
 
 ---
 
@@ -160,10 +160,29 @@ Sí, en gran parte desde **OpenClaw** y **Ollama**. División de responsabilidad
 | Capa | Qué configuras | Cómo |
 |------|----------------|------|
 | **Ollama** | Qué modelos están **descargados** y disponibles en el PC | `ollama pull <modelo>`, `ollama list` |
-| **OpenClaw** | Qué modelo usa **cada agente**, proveedores, fallbacks, herramientas | `~/.openclaw/openclaw.json` |
-| **LOCUS** (futuro) | UI amigable para cambiar modelos, atajos, preferencias | Capa de configuración sobre OpenClaw/Ollama |
+| **OpenClaw** | Qué modelos puede usar el gateway (allowlist), proveedores, agentes, herramientas | `~/.openclaw/openclaw.json` |
+| **LOCUS** (futuro) | UI para habilitar/deshabilitar modelos, asignar **rol de uso**, preferencias de chat | Capa de configuración sobre OpenClaw/Ollama (ver §7.2.1) |
 
-El usuario no editará JSON a mano en el día a día; LOCUS expondrá configuración, pero **OpenClaw sigue siendo la fuente de verdad** para agentes y modelos asignados.
+El usuario no editará JSON a mano en el día a día; LOCUS expondrá configuración. **OpenClaw sigue siendo la fuente de verdad técnica** (allowlist, agentes, herramientas). **LOCUS es la fuente de verdad de roles y UX** (qué modelo se usa para qué tarea).
+
+#### 7.2.1 Configuración desde LOCUS (futuro)
+
+Pantalla **Ajustes → Modelos** (ventana de configuración o panel del modo completo; no en el selector compacto del spotlight).
+
+| Acción en la UI | Efecto técnico |
+|-----------------|----------------|
+| Ver inventario | Cruzar modelos instalados en Ollama (`ollama list`) con los habilitados en OpenClaw (`agents.defaults.models`) |
+| **Habilitar** modelo | Añadir `ollama/<nombre>: {}` al allowlist y entrada en `models.providers.ollama.models` |
+| **Deshabilitar** modelo | Quitar del allowlist (no desinstala el modelo de Ollama) |
+| **Asignar rol** | Guardar metadato en LOCUS (`general`, `codigo`, `vision`, `rapido`) — ver §7.8 |
+| **Instalar** modelo (opcional) | Invocar `ollama pull` desde LOCUS si el modelo no está descargado |
+
+**Reglas de implementación:**
+
+- Toda escritura en `openclaw.json` se hace desde **Rust** (comandos Tauri), con validación y mensajes de error en español.
+- El frontend **no** edita JSON directamente.
+- LOCUS **no** reemplaza la configuración avanzada de agentes OpenClaw (workspaces, herramientas, skills); eso sigue en OpenClaw.
+- El selector de modelo del chat muestra todos los modelos **habilitados**; el **router** (Fase 5) usará los **roles** para derivar automáticamente al especialista.
 
 ### 7.3 Rol de OpenClaw
 
@@ -221,6 +240,30 @@ Para **genérico → especialista por tarea**, LOCUS añadirá orquestación pro
 | **Automatización** | Tareas en el PC, comandos, flujos repetitivos, control del sistema |
 
 Estos casos alimentan la elección del modelo genérico y del primer especialista (programación/automatización) en Fase 5.
+
+### 7.8 Roles de modelo (propuesta)
+
+LOCUS asigna a cada modelo habilitado un **rol de uso**. Los roles alimentan la orquestación genérico → especialista (§7.1) sin depender del esquema de OpenClaw.
+
+| Rol LOCUS | Uso | Ejemplo de modelo |
+|-----------|-----|-------------------|
+| `general` | Chat por defecto, preguntas, apuntes, conversación | `qwen3:8b` |
+| `codigo` | Programación, scripts, depuración, automatizaciones | `qwen2.5-coder:7b` |
+| `vision` | Tareas con imágenes (solo si el modelo lo soporta) | `llava`, `moondream`, etc. |
+| `rapido` | Respuestas ligeras cuando aplique | Modelos pequeños o cuantizados |
+
+**Reglas MVP:**
+
+- Un modelo tiene **un rol principal** (varios roles por modelo = fase posterior).
+- Solo **un** modelo con rol `general` activo como predeterminado del chat.
+- Deshabilitar un modelo lo oculta del selector y del router, pero no lo borra de Ollama.
+- Los roles se persisten en la configuración de LOCUS (p. ej. `locus-settings`), no en `openclaw.json`.
+
+**Flujo de decisión (Fase 5):**
+
+1. El usuario escribe en la barra prompt (modelo manual o `general` por defecto).
+2. Si el router detecta tarea de código → deriva al modelo con rol `codigo`.
+3. Si hay adjunto de imagen → deriva al modelo con rol `vision` (si existe y está habilitado).
 
 ---
 
@@ -300,9 +343,11 @@ Empezar por **texto** (no voz) permite validar el núcleo — OpenClaw + Ollama 
 
 ### Fase 5 — Orquestación multi-modelo
 
-- [ ] Segundo modelo especializado en Ollama
-- [ ] Router genérico → especialista
-- [ ] Configuración de modelos desde LOCUS (wrapper sobre OpenClaw)
+- [ ] Segundo modelo especializado en Ollama (p. ej. `qwen2.5-coder:7b`)
+- [ ] **UI Ajustes → Modelos**: inventario Ollama × allowlist, habilitar/deshabilitar sin editar JSON
+- [ ] **Persistencia de roles** en LOCUS (`general`, `codigo`, `vision`, `rapido`) por modelo habilitado
+- [ ] **Router genérico → especialista** que consume los roles asignados
+- [ ] (Opcional) Instalar modelos desde LOCUS vía `ollama pull`
 
 ### Fase 6 — Modo voz
 
@@ -378,6 +423,7 @@ Empezar por **texto** (no voz) permite validar el núcleo — OpenClaw + Ollama 
 | D-17 | Atajos validados: `Ctrl+Win+V`, `Ctrl+Win+L` |
 | D-18 | Barra prompt: centro superior estilo Spotlight |
 | D-19 | Casos de uso: apuntes, programación, preguntas, automatizaciones |
+| D-20 | Configuración de modelos vía UI LOCUS: allowlist en OpenClaw; roles de uso en LOCUS |
 
 ---
 
@@ -390,6 +436,7 @@ Empezar por **texto** (no voz) permite validar el núcleo — OpenClaw + Ollama 
 | 0.3 | Terminal independiente, UX barra prompt, atajos, fases MVP, Ollama instalado, confirmaciones dual |
 | 0.4 | Hardware, atajos y UX confirmados; casos de uso; modelos recomendados; briefing funcional cerrado |
 | 0.5 | Stack tecnológico definido en STACK.md |
+| 0.6 | UI de configuración de modelos (§7.2.1), roles de modelo (§7.8), Fase 5 desglosada; estado OpenClaw actualizado |
 
 ---
 

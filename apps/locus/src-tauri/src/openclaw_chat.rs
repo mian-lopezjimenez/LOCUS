@@ -1,8 +1,7 @@
 use crate::chat_cancel::ChatCancelState;
+use crate::openclaw_config::{read_gateway_token, validate_model_selection};
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, State};
 
 const OPENCLAW_CHAT_URL: &str = "http://127.0.0.1:18789/v1/chat/completions";
@@ -73,25 +72,12 @@ struct StreamDelta {
     content: Option<String>,
 }
 
-fn openclaw_config_path() -> Option<PathBuf> {
-  let home = std::env::var("USERPROFILE")
-    .or_else(|_| std::env::var("HOME"))
-    .ok()?;
-  Some(
-    PathBuf::from(home)
-      .join(".openclaw")
-      .join("openclaw.json"),
-  )
+fn auth_header() -> Option<String> {
+  read_gateway_token().map(|token| format!("Bearer {token}"))
 }
 
-fn read_gateway_token() -> Option<String> {
-  let path = openclaw_config_path()?;
-  let text = fs::read_to_string(path).ok()?;
-  let json: serde_json::Value = serde_json::from_str(&text).ok()?;
-  json
-    .pointer("/gateway/auth/token")
-    .and_then(|v| v.as_str())
-    .map(|s| s.to_string())
+fn ensure_model_allowed(model: &str) -> Result<(), String> {
+  validate_model_selection(model)
 }
 
 fn build_request(
@@ -106,15 +92,12 @@ fn build_request(
   })
 }
 
-fn auth_header() -> Option<String> {
-  read_gateway_token().map(|token| format!("Bearer {token}"))
-}
-
 async fn send_non_streaming(
   client: &reqwest::Client,
   messages: &[ChatMessage],
   model: &str,
 ) -> Result<String, String> {
+  ensure_model_allowed(model)?;
   let resolved = resolve_model(model);
   let mut request = client
     .post(OPENCLAW_CHAT_URL)
@@ -174,6 +157,7 @@ async fn send_streaming(
   messages: &[ChatMessage],
   model: &str,
 ) -> Result<String, String> {
+  ensure_model_allowed(model)?;
   let resolved = resolve_model(model);
   let mut request = client
     .post(OPENCLAW_CHAT_URL)

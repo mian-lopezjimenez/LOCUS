@@ -7,6 +7,7 @@ import {
 } from "@/services/chat";
 import type { ChatTurn } from "@/types/chat";
 import { newId } from "@/utils/id";
+import { findRetryContext } from "@/utils/retry";
 
 type UseChatStreamOptions = {
   messages: ChatTurn[];
@@ -18,7 +19,6 @@ type UseChatStreamOptions = {
 };
 
 export function useChatStream({
-  messages,
   messagesRef,
   setMessages,
   selectedModel,
@@ -29,6 +29,11 @@ export function useChatStream({
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const streamingIdRef = useRef<string | null>(null);
   const streamUnlistenersRef = useRef<Array<() => void>>([]);
+  const loadingRef = useRef(false);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
 
   const cleanupStreamListeners = useCallback(() => {
     for (const unlisten of streamUnlistenersRef.current) {
@@ -61,10 +66,10 @@ export function useChatStream({
     void cancelChatGeneration();
   }, []);
 
-  const submit = useCallback(
-    async (text: string) => {
+  const sendMessage = useCallback(
+    async (text: string, context: ChatTurn[]) => {
       const trimmed = text.trim();
-      if (!trimmed || loading) return;
+      if (!trimmed || loadingRef.current) return;
 
       const userTurn: ChatTurn = { id: newId(), role: "user", content: trimmed };
       const assistantId = newId();
@@ -73,7 +78,7 @@ export function useChatStream({
         role: "assistant",
         content: "",
       };
-      const nextMessages = [...messages, userTurn, assistantTurn];
+      const nextMessages = [...context, userTurn, assistantTurn];
 
       setMessages(nextMessages);
       messagesRef.current = nextMessages;
@@ -94,7 +99,7 @@ export function useChatStream({
       try {
         const apiMessages = [
           { role: "system", content: SYSTEM_PROMPT },
-          ...messages
+          ...context
             .filter((message) => message.role !== "error")
             .map((message) => ({
               role: message.role,
@@ -153,8 +158,6 @@ export function useChatStream({
       appendStreamChunk,
       cleanupStreamListeners,
       focusInput,
-      loading,
-      messages,
       messagesRef,
       persistCurrentConversation,
       selectedModel,
@@ -162,10 +165,31 @@ export function useChatStream({
     ],
   );
 
+  const submit = useCallback(
+    (text: string) => sendMessage(text, messagesRef.current),
+    [messagesRef, sendMessage],
+  );
+
+  const retryFromMessage = useCallback(
+    async (messageId: string) => {
+      if (loadingRef.current) return;
+
+      const context = findRetryContext(messagesRef.current, messageId);
+      if (!context) return;
+
+      setMessages(context.truncated);
+      messagesRef.current = context.truncated;
+      await persistCurrentConversation(context.truncated);
+      await sendMessage(context.userContent, context.truncated);
+    },
+    [messagesRef, persistCurrentConversation, sendMessage, setMessages],
+  );
+
   return {
     loading,
     streamingId,
     submit,
+    retryFromMessage,
     stopGeneration,
   };
 }

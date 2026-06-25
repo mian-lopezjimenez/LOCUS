@@ -1,3 +1,4 @@
+use crate::openclaw_config::allowed_ollama_model_names;
 use serde::Deserialize;
 
 const OLLAMA_TAGS_URL: &str = "http://127.0.0.1:11434/api/tags";
@@ -57,6 +58,7 @@ pub async fn list_chat_models() -> Result<Vec<ModelInfo>, String> {
 
     let mut models = Vec::new();
     let mut seen_ids = std::collections::HashSet::new();
+    let allowed_ollama = allowed_ollama_model_names();
 
     if let Ok(resp) = client.get(OPENCLAW_MODELS_URL).send().await {
         if resp.status().is_success() {
@@ -91,6 +93,10 @@ pub async fn list_chat_models() -> Result<Vec<ModelInfo>, String> {
             if let Ok(parsed) = resp.json::<OllamaTagsResponse>().await {
                 if let Some(items) = parsed.models {
                     for item in items {
+                        if !allowed_ollama.is_empty() && !allowed_ollama.contains(&item.name) {
+                            continue;
+                        }
+
                         let id = format!("ollama:{}", item.name);
                         if seen_ids.insert(id.clone()) {
                             models.push(ModelInfo {

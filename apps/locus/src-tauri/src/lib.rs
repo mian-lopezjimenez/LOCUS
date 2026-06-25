@@ -1,5 +1,6 @@
 mod chat_cancel;
 mod ollama;
+mod openclaw_config;
 mod openclaw_chat;
 mod settings;
 mod spotlight_session;

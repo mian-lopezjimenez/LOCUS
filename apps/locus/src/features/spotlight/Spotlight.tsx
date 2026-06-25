@@ -4,14 +4,13 @@ import { Menu, Maximize2 } from "lucide-react";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import {
   ChatComposer,
-  MessageBubble,
   MessageList,
 } from "@/components/chat/ChatComposer";
 import {
   ConversationBar,
   ConversationHistory,
 } from "@/components/chat/ConversationHistory";
-import { MessageContent } from "@/components/chat/MessageContent";
+import { MessageRow } from "@/components/chat/MessageRow";
 import { IconButton, ModelSelect } from "@/components/chat/SpotlightHeader";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useConversations } from "@/hooks/useConversations";
@@ -49,14 +48,15 @@ export function Spotlight() {
     deleteConversation,
   } = useConversations();
 
-  const { loading, streamingId, submit, stopGeneration } = useChatStream({
-    messages,
-    messagesRef,
-    setMessages,
-    selectedModel,
-    persistCurrentConversation,
-    focusInput,
-  });
+  const { loading, streamingId, submit, retryFromMessage, stopGeneration } =
+    useChatStream({
+      messages,
+      messagesRef,
+      setMessages,
+      selectedModel,
+      persistCurrentConversation,
+      focusInput,
+    });
 
   const { closePanel } = useSpotlightWindow(focusInput);
 
@@ -75,10 +75,15 @@ export function Spotlight() {
   useEffect(() => {
     if (!bootstrapQuery.data) return;
 
-    const { store, settings } = bootstrapQuery.data;
+    const { store, settings, modelList } = bootstrapQuery.data;
     applyStore(store);
 
-    const savedModel = normalizeModelId(settings.selectedModel || DEFAULT_MODEL);
+    const modelIds = new Set(modelList.map((model) => model.id));
+    const normalized = normalizeModelId(settings.selectedModel || DEFAULT_MODEL);
+    const savedModel = modelIds.has(normalized)
+      ? normalized
+      : DEFAULT_MODEL;
+
     setSelectedModel(savedModel);
 
     if (savedModel !== settings.selectedModel) {
@@ -180,13 +185,15 @@ export function Spotlight() {
             loading={loading}
             streamingId={streamingId}
             renderMessage={(message) => (
-              <MessageBubble key={message.id} role={message.role}>
-                <MessageContent
-                  role={message.role}
-                  content={message.content}
-                  streaming={message.streaming}
-                />
-              </MessageBubble>
+              <MessageRow
+                key={message.id}
+                id={message.id}
+                role={message.role}
+                content={message.content}
+                streaming={message.streaming}
+                loading={loading}
+                onRetry={(messageId) => void retryFromMessage(messageId)}
+              />
             )}
           />
         </div>
