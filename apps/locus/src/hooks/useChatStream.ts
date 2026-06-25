@@ -14,8 +14,12 @@ import type { ChatTurn } from "@/types/chat";
 import type { ModelInfo } from "@/types/models";
 import { newId } from "@/utils/id";
 import { buildApiMessages, buildDisplayContent } from "@/utils/attachments";
+import { trimContextForApi } from "@/utils/contextLimits";
 import { findRetryContext } from "@/utils/retry";
-import { prepareAttachmentsForChatModel } from "@/utils/vision";
+import {
+  needsVisionDelegation,
+  prepareAttachmentsForChatModel,
+} from "@/utils/vision";
 
 export type ProcessingPhase = "vision" | "chat" | null;
 
@@ -162,27 +166,34 @@ export function useChatStream({
           });
         }
 
-        const contextMessages = await Promise.all(
-          context
-            .filter((message) => message.role !== "error")
-            .slice(-24)
-            .map(async (message) => {
-              const userText = message.prompt ?? message.content;
-              const prepared = await prepareAttachmentsForChatModel(
-                userText,
-                message.attachments ?? [],
-                selectedModel,
-                models,
-                visionModelId,
-              );
-              return {
-                role: message.role,
-                content: userText,
-                attachments: prepared.attachments,
-                textOnlyImages: prepared.textOnlyImages,
-              };
-            }),
+        const hasImagesInCurrent = finalAttachments.some(
+          (attachment) => attachment.kind === "image",
         );
+        const trimmedContext = trimContextForApi(context, {
+          hasImagesInCurrentMessage: hasImagesInCurrent,
+        });
+        const chatUsesVisionDelegation = needsVisionDelegation(
+          finalAttachments,
+          selectedModel,
+          models,
+        );
+
+        const contextMessages = trimmedContext.map((message) => {
+          const userText = message.prompt ?? message.content;
+          const hasImages = (message.attachments ?? []).some(
+            (attachment) => attachment.kind === "image",
+          );
+
+          return {
+            role: message.role,
+            content: userText,
+            attachments: message.attachments ?? [],
+            textOnlyImages:
+              chatUsesVisionDelegation &&
+              hasImages &&
+              message.role === "user",
+          };
+        });
 
         const apiMessages = await buildApiMessages(
           SYSTEM_PROMPT,

@@ -69,16 +69,7 @@ export function ChatComposer({
     (query.trim() || attachments.length > 0) && !visionUnavailable;
 
   return (
-    <footer className="shrink-0 border-t border-border bg-card px-3 py-2.5">
-      <div className="mb-2 flex min-w-0 items-center">
-        <ModelSelect
-          models={models}
-          value={selectedModel}
-          onChange={onModelChange}
-          disabled={loading}
-        />
-      </div>
-
+    <footer className="shrink-0 border-t border-border bg-card px-4 py-2.5">
       <VisionNotice
         willDelegate={willDelegate}
         visionUnavailable={visionUnavailable}
@@ -90,25 +81,12 @@ export function ChatComposer({
       <AttachmentChips attachments={attachments} onRemove={onRemoveAttachment} />
 
       <div
-        className="relative flex items-center gap-2"
+        className="relative flex items-end gap-2"
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
         <DropOverlay active={dragOver} />
-        <TooltipHint content="Adjuntar archivo">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="size-10 shrink-0 text-muted-foreground"
-            onClick={onPickFiles}
-            disabled={loading}
-            aria-label="Adjuntar archivo"
-          >
-            <Paperclip className="size-4" />
-          </Button>
-        </TooltipHint>
         <Textarea
           ref={inputRef}
           placeholder="Pregunta a LOCUS…"
@@ -152,6 +130,28 @@ export function ChatComposer({
             <ArrowRight className="size-4" />
           </Button>
         )}
+      </div>
+
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <ModelSelect
+          models={models}
+          value={selectedModel}
+          onChange={onModelChange}
+          disabled={loading}
+        />
+        <TooltipHint content="Adjuntar archivo">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="size-7 shrink-0 p-0 text-muted-foreground"
+            onClick={onPickFiles}
+            disabled={loading}
+            aria-label="Adjuntar archivo"
+          >
+            <Paperclip className="size-3.5" />
+          </Button>
+        </TooltipHint>
       </div>
     </footer>
   );

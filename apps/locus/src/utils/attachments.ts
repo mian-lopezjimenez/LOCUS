@@ -1,6 +1,6 @@
 import { loadImageDataUrl } from "@/services/attachments";
 import type { MessageAttachment } from "@/types/attachment";
-import { compressImageDataUrl } from "@/utils/imageCompress";
+import { compressImageDataUrl, compressImageForVision } from "@/utils/imageCompress";
 
 export type ApiContentPart =
   | { type: "text"; text: string }
@@ -63,7 +63,10 @@ function appendTextAttachments(
   return body;
 }
 
-async function resolveImageUrl(attachment: MessageAttachment & { kind: "image" }) {
+async function resolveImageUrl(
+  attachment: MessageAttachment & { kind: "image" },
+  forVision = false,
+) {
   let raw: string;
   if (attachment.dataUrl) {
     raw = attachment.dataUrl;
@@ -72,14 +75,16 @@ async function resolveImageUrl(attachment: MessageAttachment & { kind: "image" }
   } else {
     throw new Error(`No se pudo cargar la imagen ${attachment.name}`);
   }
-  const { dataUrl } = await compressImageDataUrl(raw);
+  const { dataUrl } = forVision
+    ? await compressImageForVision(raw)
+    : await compressImageDataUrl(raw);
   return dataUrl;
 }
 
 export async function buildApiContent(
   text: string,
   attachments: MessageAttachment[],
-  options: { textOnlyImages?: boolean } = {},
+  options: { textOnlyImages?: boolean; forVision?: boolean } = {},
 ): Promise<string | ApiContentPart[]> {
   const images = attachments.filter(
     (attachment): attachment is MessageAttachment & { kind: "image" } =>
@@ -95,9 +100,10 @@ export async function buildApiContent(
   if (options.textOnlyImages) {
     let body = textBody;
     for (const image of images) {
-      if (image.visionDescription) {
-        body += `\n\n--- ${image.name} (análisis visual) ---\n${image.visionDescription}`;
-      }
+      const description =
+        image.visionDescription ??
+        "[La imagen no pudo incluirse en el contexto por límite de tamaño]";
+      body += `\n\n--- ${image.name} (análisis visual) ---\n${description}`;
     }
     return body;
   }
@@ -108,7 +114,7 @@ export async function buildApiContent(
   }
 
   for (const image of images) {
-    const url = await resolveImageUrl(image);
+    const url = await resolveImageUrl(image, options.forVision);
     parts.push({ type: "image_url", image_url: { url } });
   }
 

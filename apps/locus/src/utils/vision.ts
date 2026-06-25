@@ -2,9 +2,7 @@ import { sendChatMessage } from "@/services/chat";
 import type { MessageAttachment } from "@/types/attachment";
 import type { ModelInfo } from "@/types/models";
 import { buildApiContent } from "@/utils/attachments";
-
-const VISION_SYSTEM =
-  "Eres un asistente de visión. Describe imágenes de forma concisa y precisa.";
+import { truncateVisionDescription } from "@/utils/contextLimits";
 
 function visionUserPrompt(userText: string, imageCount: number): string {
   const countLabel = imageCount === 1 ? "la imagen" : `las ${imageCount} imágenes`;
@@ -64,16 +62,17 @@ async function describeImages(
   images: Array<MessageAttachment & { kind: "image" }>,
   visionModelId: string,
 ): Promise<string> {
-  const content = await buildApiContent(visionUserPrompt(userText, images.length), images);
+  const content = await buildApiContent(
+    visionUserPrompt(userText, images.length),
+    images,
+    { forVision: true },
+  );
   const description = await sendChatMessage(
-    [
-      { role: "system", content: VISION_SYSTEM },
-      { role: "user", content },
-    ],
+    [{ role: "user", content }],
     visionModelId,
   );
 
-  const trimmed = description.trim();
+  const trimmed = truncateVisionDescription(description.trim());
   if (!trimmed) {
     throw new Error("El modelo de visión no devolvió una descripción");
   }

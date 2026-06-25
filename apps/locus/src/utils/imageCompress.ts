@@ -1,14 +1,7 @@
-const MAX_IMAGE_SIDE = 1280;
-const JPEG_QUALITY = 0.82;
-
-function loadImage(dataUrl: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("No se pudo decodificar la imagen"));
-    img.src = dataUrl;
-  });
-}
+const MAX_IMAGE_SIDE = 896;
+const VISION_IMAGE_SIDE = 512;
+const JPEG_QUALITY = 0.75;
+const VISION_JPEG_QUALITY = 0.65;
 
 export async function compressImageDataUrl(
   dataUrl: string,
@@ -40,4 +33,17 @@ export async function compressImageDataUrl(
   ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
   const compressed = canvas.toDataURL("image/jpeg", quality);
   return { dataUrl: compressed, mimeType: "image/jpeg" };
+}
+
+export async function compressImageForVision(dataUrl: string) {
+  return compressImageDataUrl(dataUrl, VISION_IMAGE_SIDE, VISION_JPEG_QUALITY);
+}
+
+function loadImage(dataUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("No se pudo decodificar la imagen"));
+    img.src = dataUrl;
+  });
 }
