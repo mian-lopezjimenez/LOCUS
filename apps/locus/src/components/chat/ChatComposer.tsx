@@ -1,15 +1,21 @@
 import { Square, ArrowRight } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { ModelSelect } from "@/components/chat/SpotlightHeader";
+import { ThemeSelect } from "@/components/chat/ThemeSelect";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { ChatRole } from "@/types/chat";
+import type { ModelInfo } from "@/types/models";
 
 type ChatComposerProps = {
   query: string;
   loading: boolean;
+  models: ModelInfo[];
+  selectedModel: string;
+  onModelChange: (modelId: string) => void;
   onQueryChange: (value: string) => void;
   onSubmit: () => void;
   onStop: () => void;
@@ -19,6 +25,9 @@ type ChatComposerProps = {
 export function ChatComposer({
   query,
   loading,
+  models,
+  selectedModel,
+  onModelChange,
   onQueryChange,
   onSubmit,
   onStop,
@@ -26,6 +35,15 @@ export function ChatComposer({
 }: ChatComposerProps) {
   return (
     <footer className="shrink-0 border-t border-border bg-card px-3 py-2.5">
+      <div className="mb-2 flex min-w-0 items-center gap-0.5">
+        <ModelSelect
+          models={models}
+          value={selectedModel}
+          onChange={onModelChange}
+          disabled={loading}
+        />
+        <ThemeSelect />
+      </div>
       <div className="flex items-center gap-2">
         <Textarea
           ref={inputRef}

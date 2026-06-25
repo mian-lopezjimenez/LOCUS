@@ -1,11 +1,12 @@
-import { Monitor, Moon, Sun } from "lucide-react";
+import { ChevronDown, Monitor, Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/providers/ThemeProvider";
 import type { ThemePreference } from "@/types/settings";
 
@@ -21,29 +22,38 @@ const OPTIONS: Array<{
 
 export function ThemeSelect() {
   const { preference, setPreference } = useTheme();
+  const current = OPTIONS.find((option) => option.value === preference) ?? OPTIONS[0];
 
   return (
-    <Select
-      value={preference}
-      onValueChange={(value) => setPreference(value as ThemePreference)}
-    >
-      <SelectTrigger
-        size="sm"
-        className="h-8 w-[108px] border-border bg-secondary text-xs"
-        aria-label="Tema de la interfaz"
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {OPTIONS.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            <span className="flex items-center gap-2">
-              {option.icon}
-              {option.label}
-            </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 px-2 text-xs text-muted-foreground"
+          aria-label="Tema de la interfaz"
+        >
+          {current.icon}
+          <span>{current.label}</span>
+          <ChevronDown className="size-3.5 opacity-60" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuRadioGroup
+          value={preference}
+          onValueChange={(value) => setPreference(value as ThemePreference)}
+        >
+          {OPTIONS.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value}>
+              <span className="flex items-center gap-2">
+                {option.icon}
+                {option.label}
+              </span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

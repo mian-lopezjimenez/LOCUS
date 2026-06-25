@@ -47,12 +47,15 @@ export function MessageRow({
           role === "user" ? "max-w-[min(85%,32rem)] w-fit" : "w-full max-w-full",
         )}
       >
+        <MessageBubble role={role}>
+          <MessageContent role={role} content={content} streaming={streaming} />
+        </MessageBubble>
+
         {showActions && (
           <div
             className={cn(
-              "absolute top-0 z-10 flex gap-0.5 rounded-md border border-border/60 bg-card/95 p-0.5 shadow-sm",
-              "opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
-              role === "user" ? "right-0" : "right-0",
+              "mt-1 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
+              role === "user" ? "justify-end" : "justify-start",
             )}
           >
             <TooltipHint content={copied ? "Copiado" : "Copiar"}>
@@ -60,6 +63,7 @@ export function MessageRow({
                 type="button"
                 variant="ghost"
                 size="icon-xs"
+                className="text-muted-foreground"
                 aria-label={copied ? "Copiado" : "Copiar mensaje"}
                 onClick={() => void handleCopy()}
               >
@@ -70,6 +74,7 @@ export function MessageRow({
               type="button"
               variant="ghost"
               size="icon-xs"
+              className="text-muted-foreground"
               aria-label="Reintentar mensaje"
               onClick={() => onRetry(id)}
             >
@@ -77,10 +82,6 @@ export function MessageRow({
             </Button>
           </div>
         )}
-
-        <MessageBubble role={role}>
-          <MessageContent role={role} content={content} streaming={streaming} />
-        </MessageBubble>
       </div>
     </MessageRowLayout>
   );

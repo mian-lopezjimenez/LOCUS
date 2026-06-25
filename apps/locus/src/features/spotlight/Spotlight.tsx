@@ -8,8 +8,7 @@ import {
 } from "@/components/chat/ChatComposer";
 import { ConversationHistory } from "@/components/chat/ConversationHistory";
 import { MessageRow } from "@/components/chat/MessageRow";
-import { IconButton, ModelSelect } from "@/components/chat/SpotlightHeader";
-import { ThemeSelect } from "@/components/chat/ThemeSelect";
+import { IconButton } from "@/components/chat/SpotlightHeader";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useConversations } from "@/hooks/useConversations";
 import { useSpotlightWindow } from "@/hooks/useSpotlightWindow";
@@ -120,23 +119,14 @@ export function Spotlight() {
         />
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-1.5">
-            <ModelSelect
-              models={models}
-              value={selectedModel}
-              onChange={(modelId) => void handleModelChange(modelId)}
-              disabled={loading}
-            />
-            <div className="flex shrink-0 items-center gap-1.5">
-              <ThemeSelect />
-              <IconButton
-                label="Abrir modo completo"
-                tooltip="Modo completo (Fase 3)"
-                onClick={() => void openFullView()}
-              >
-                <Maximize2 className="size-4" />
-              </IconButton>
-            </div>
+          <header className="flex shrink-0 items-center justify-end border-b border-border bg-card px-2 py-1">
+            <IconButton
+              label="Abrir modo completo"
+              tooltip="Modo completo (Fase 3)"
+              onClick={() => void openFullView()}
+            >
+              <Maximize2 className="size-4" />
+            </IconButton>
           </header>
 
           <MessageList
@@ -160,6 +150,9 @@ export function Spotlight() {
             inputRef={inputRef}
             query={query}
             loading={loading}
+            models={models}
+            selectedModel={selectedModel}
+            onModelChange={(modelId) => void handleModelChange(modelId)}
             onQueryChange={setQuery}
             onSubmit={handleSubmit}
             onStop={stopGeneration}

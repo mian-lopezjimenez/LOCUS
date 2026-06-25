@@ -1,14 +1,15 @@
+import { ChevronDown, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { ModelInfo } from "@/types/models";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 type ModelSelectProps = {
   models: ModelInfo[];
@@ -23,28 +24,43 @@ export function ModelSelect({
   disabled,
   onChange,
 }: ModelSelectProps) {
+  const current =
+    models.find((model) => model.id === value) ??
+    ({ id: value, label: value, supportsVision: false } satisfies ModelInfo);
+
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger
-        size="sm"
-        className="h-8 min-w-0 flex-1 max-w-[220px] border-border bg-secondary text-xs"
-        aria-label="Seleccionar modelo"
-      >
-        <SelectValue placeholder="Modelo" />
-      </SelectTrigger>
-      <SelectContent>
-        {models.length === 0 ? (
-          <SelectItem value={value}>{value}</SelectItem>
-        ) : (
-          models.map((model) => (
-            <SelectItem key={model.id} value={model.id}>
-              {model.label}
-              {model.supportsVision ? " · visión" : ""}
-            </SelectItem>
-          ))
-        )}
-      </SelectContent>
-    </Select>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled}
+          className="h-7 max-w-[min(100%,12rem)] gap-1.5 px-2 text-xs text-muted-foreground"
+          aria-label="Seleccionar modelo"
+        >
+          <Cpu className="size-3.5 shrink-0" />
+          <span className="truncate">{current.label}</span>
+          <ChevronDown className="size-3.5 shrink-0 opacity-60" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-w-72">
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          {models.length === 0 ? (
+            <DropdownMenuRadioItem value={value}>{value}</DropdownMenuRadioItem>
+          ) : (
+            models.map((model) => (
+              <DropdownMenuRadioItem key={model.id} value={model.id}>
+                <span className="truncate">
+                  {model.label}
+                  {model.supportsVision ? " · visión" : ""}
+                </span>
+              </DropdownMenuRadioItem>
+            ))
+          )}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
