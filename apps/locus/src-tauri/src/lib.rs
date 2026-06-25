@@ -1,8 +1,10 @@
 mod openclaw_chat;
+mod spotlight_session;
 mod spotlight_window;
 mod supervisor;
 
 use openclaw_chat::{send_chat_completion, ChatMessage};
+use spotlight_session::{load_spotlight_session, save_spotlight_session};
 use spotlight_window::{read_gateway_token, toggle as toggle_spotlight};
 use supervisor::get_service_health;
 use tauri::{Emitter, Manager};
@@ -92,7 +94,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_service_status,
             get_gateway_token,
-            send_chat_message
+            send_chat_message,
+            load_spotlight_session,
+            save_spotlight_session
         ])
         .run(tauri::generate_context!())
         .expect("error al ejecutar LOCUS");
