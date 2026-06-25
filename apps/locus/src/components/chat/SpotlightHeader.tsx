@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { ModelInfo } from "@/types/models";
 import {
@@ -49,7 +50,7 @@ export function ModelSelect({
 
 type IconButtonProps = {
   label: string;
-  title: string;
+  tooltip?: string;
   onClick: () => void;
   disabled?: boolean;
   active?: boolean;
@@ -58,18 +59,17 @@ type IconButtonProps = {
 
 export function IconButton({
   label,
-  title,
+  tooltip,
   onClick,
   disabled,
   active,
   children,
 }: IconButtonProps) {
-  return (
+  const button = (
     <Button
       type="button"
       variant={active ? "secondary" : "ghost"}
       size="icon-sm"
-      title={title}
       aria-label={label}
       onClick={onClick}
       disabled={disabled}
@@ -78,4 +78,10 @@ export function IconButton({
       {children}
     </Button>
   );
+
+  if (!tooltip) {
+    return button;
+  }
+
+  return <TooltipHint content={tooltip}>{button}</TooltipHint>;
 }

@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { ChatRole } from "@/types/chat";
 
@@ -44,17 +45,18 @@ export function ChatComposer({
           className="min-h-10 max-h-28 flex-1 resize-none bg-secondary py-2 text-sm leading-5"
         />
         {loading ? (
-          <Button
-            type="button"
-            variant="destructive"
-            size="icon-sm"
-            className="size-10 shrink-0"
-            onClick={onStop}
-            aria-label="Detener generación"
-            title="Detener"
-          >
-            <Square className="size-4 fill-current" />
-          </Button>
+          <TooltipHint content="Detener">
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon-sm"
+              className="size-10 shrink-0"
+              onClick={onStop}
+              aria-label="Detener generación"
+            >
+              <Square className="size-4 fill-current" />
+            </Button>
+          </TooltipHint>
         ) : (
           <Button
             type="button"

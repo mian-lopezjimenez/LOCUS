@@ -131,7 +131,7 @@ export function Spotlight() {
               <ThemeSelect />
               <IconButton
                 label="Abrir modo completo"
-                title="Modo completo (Fase 3)"
+                tooltip="Modo completo (Fase 3)"
                 onClick={() => void openFullView()}
               >
                 <Maximize2 className="size-4" />

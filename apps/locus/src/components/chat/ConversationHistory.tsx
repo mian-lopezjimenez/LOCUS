@@ -57,14 +57,12 @@ export function ConversationHistory({
           <div className="flex shrink-0 flex-col items-center gap-1 border-b border-sidebar-border py-2">
             <IconButton
               label="Mostrar historial"
-              title="Mostrar historial"
               onClick={() => setCollapsed(false)}
             >
               <ChevronRight className="size-4" />
             </IconButton>
             <IconButton
               label="Nueva conversación"
-              title="Nueva conversación"
               onClick={onCreate}
               disabled={loading}
             >
@@ -77,7 +75,6 @@ export function ConversationHistory({
               <div className="flex min-w-0 items-center gap-1">
                 <IconButton
                   label="Ocultar historial"
-                  title="Ocultar historial"
                   onClick={() => setCollapsed(true)}
                 >
                   <ChevronLeft className="size-4" />
@@ -93,7 +90,6 @@ export function ConversationHistory({
                 className="h-8 shrink-0 gap-1 text-primary"
                 onClick={onCreate}
                 disabled={loading}
-                title="Nueva conversación"
               >
                 <Plus className="size-4" />
                 Nueva
@@ -111,7 +107,6 @@ export function ConversationHistory({
                       type="button"
                       disabled={loading}
                       onClick={() => onSelect(conversation.id)}
-                      title={conversation.title}
                       className={cn(
                         "relative w-full min-w-0 overflow-hidden rounded-lg border border-transparent px-3 py-2.5 text-left transition-[padding,colors] disabled:pointer-events-none disabled:opacity-50",
                         !loading && "group-hover:pr-11 hover:bg-sidebar-accent",
@@ -150,7 +145,6 @@ export function ConversationHistory({
                         variant="ghost"
                         size="icon-xs"
                         className="hover:bg-destructive/15"
-                        title="Eliminar conversación"
                         aria-label={`Eliminar ${conversation.title}`}
                         disabled={loading}
                         onClick={(event) => {

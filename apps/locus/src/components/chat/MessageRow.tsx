@@ -6,6 +6,7 @@ import {
   MessageRowLayout,
 } from "@/components/chat/ChatComposer";
 import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { ChatRole } from "@/types/chat";
 import { copyToClipboard } from "@/utils/clipboard";
@@ -54,21 +55,21 @@ export function MessageRow({
               role === "user" ? "right-0" : "right-0",
             )}
           >
+            <TooltipHint content={copied ? "Copiado" : "Copiar"}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                aria-label={copied ? "Copiado" : "Copiar mensaje"}
+                onClick={() => void handleCopy()}
+              >
+                <Copy className="size-3.5" />
+              </Button>
+            </TooltipHint>
             <Button
               type="button"
               variant="ghost"
               size="icon-xs"
-              title={copied ? "Copiado" : "Copiar"}
-              aria-label={copied ? "Copiado" : "Copiar mensaje"}
-              onClick={() => void handleCopy()}
-            >
-              <Copy className="size-3.5" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              title="Reintentar"
               aria-label="Reintentar mensaje"
               onClick={() => onRetry(id)}
             >
