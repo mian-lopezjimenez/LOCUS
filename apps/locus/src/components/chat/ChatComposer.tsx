@@ -63,18 +63,14 @@ export function ChatComposer({
   const selected = models.find((model) => model.id === selectedModel);
   const needsVision = hasImageAttachments(attachments);
   const visionModel = pickVisionModel(models, visionModelId);
-  const willDelegate = needsVision && !selected?.supportsVision;
-  const visionUnavailable = willDelegate && !visionModel;
+  const visionUnavailable =
+    needsVision && !selected?.supportsVision && !visionModel;
   const canSubmit =
     (query.trim() || attachments.length > 0) && !visionUnavailable;
 
   return (
     <footer className="shrink-0 border-t border-border bg-card px-4 py-2.5">
-      <VisionNotice
-        willDelegate={willDelegate}
-        visionUnavailable={visionUnavailable}
-        visionModelLabel={visionModel?.label}
-      />
+      <VisionNotice visionUnavailable={visionUnavailable} />
       {attachmentError && (
         <p className="mb-2 text-xs text-destructive">{attachmentError}</p>
       )}

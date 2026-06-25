@@ -48,32 +48,16 @@ export function AttachmentChips({ attachments, onRemove }: AttachmentChipsProps)
 }
 
 type VisionNoticeProps = {
-  willDelegate: boolean;
   visionUnavailable: boolean;
-  visionModelLabel?: string;
 };
 
-export function VisionNotice({
-  willDelegate,
-  visionUnavailable,
-  visionModelLabel,
-}: VisionNoticeProps) {
-  if (visionUnavailable) {
-    return (
-      <p className="mb-2 text-xs text-amber-500">
-        No hay modelo de visión instalado. Ejecuta «ollama pull qwen2.5vl:7b» para
-        analizar imágenes con tu modelo de chat actual.
-      </p>
-    );
-  }
-
-  if (!willDelegate || !visionModelLabel) return null;
+export function VisionNotice({ visionUnavailable }: VisionNoticeProps) {
+  if (!visionUnavailable) return null;
 
   return (
-    <p className="mb-2 text-xs text-muted-foreground">
-      Las imágenes se analizarán con{" "}
-      <span className="font-medium text-foreground">{visionModelLabel}</span> antes
-      de responder.
+    <p className="mb-2 text-xs text-amber-500">
+      No hay modelo de visión instalado. Ejecuta «ollama pull qwen2.5vl:7b» para
+      analizar imágenes con tu modelo de chat actual.
     </p>
   );
 }
