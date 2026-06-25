@@ -139,8 +139,8 @@ export function ConversationHistory({
                           "pointer-events-none absolute inset-y-0 right-0 w-14 opacity-0 transition-opacity",
                           !loading && "group-hover:opacity-100",
                           conversation.id === activeConversationId
-                            ? "bg-gradient-to-l from-primary/15 to-transparent"
-                            : "bg-gradient-to-l from-sidebar-accent to-transparent",
+                            ? "bg-linear-to-l from-primary/15 to-transparent"
+                            : "bg-linear-to-l from-sidebar-accent to-transparent",
                         )}
                       />
                       <p className="relative overflow-hidden text-ellipsis whitespace-nowrap text-sm">
