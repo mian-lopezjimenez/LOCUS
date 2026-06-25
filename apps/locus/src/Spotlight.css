@@ -83,6 +83,154 @@ body,
   color: #9aa0a6;
 }
 
+.spotlight-btn--history-active {
+  background: rgba(100, 140, 255, 0.22);
+  color: #aecbfa;
+}
+
+.spotlight-conversation-bar {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  color: #9aa0a6;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #1c1d20;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spotlight-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.spotlight-history {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  background: #1a1b1e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.spotlight-history__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #9aa0a6;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.spotlight-history__new {
+  border: none;
+  background: transparent;
+  color: #8ab4f8;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.spotlight-history__new:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.spotlight-history__new:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.spotlight-history__list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.spotlight-history__list li {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.spotlight-history__item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #e8eaed;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.spotlight-history__item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.spotlight-history__item--active {
+  background: rgba(60, 109, 240, 0.18);
+  border-color: rgba(100, 140, 255, 0.25);
+}
+
+.spotlight-history__item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.spotlight-history__title {
+  font-size: 0.86rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.spotlight-history__meta {
+  font-size: 0.72rem;
+  color: #9aa0a6;
+}
+
+.spotlight-history__delete {
+  flex-shrink: 0;
+  width: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #9aa0a6;
+  font-size: 1.1rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.spotlight-history__list li:hover .spotlight-history__delete,
+.spotlight-history__delete:focus-visible {
+  opacity: 1;
+}
+
+.spotlight-history__delete:hover:not(:disabled) {
+  background: rgba(242, 139, 130, 0.2);
+  color: #f28b82;
+}
+
 .spotlight-messages {
   flex: 1;
   min-height: 0;
@@ -91,6 +239,13 @@ body,
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.spotlight-messages__empty {
+  margin: auto 0;
+  text-align: center;
+  color: #9aa0a6;
+  font-size: 0.88rem;
 }
 
 .spotlight-messages__anchor {

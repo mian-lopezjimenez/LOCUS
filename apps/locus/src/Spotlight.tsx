@@ -28,6 +28,19 @@ type StoredTurn = {
   content: string;
 };
 
+type Conversation = {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: StoredTurn[];
+};
+
+type SpotlightStore = {
+  activeConversationId: string;
+  conversations: Conversation[];
+};
+
 type ModelInfo = {
   id: string;
   label: string;
@@ -66,6 +79,34 @@ function mapStoredTurns(stored: StoredTurn[]): ChatTurn[] {
     role: m.role as ChatTurn["role"],
     content: m.content,
   }));
+}
+
+function toStoredTurns(turns: ChatTurn[]): StoredTurn[] {
+  return turns.map((m) => ({
+    id: m.id,
+    role: m.role,
+    content: m.content,
+  }));
+}
+
+function formatConversationDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = new Date();
+  const sameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+  if (sameDay) {
+    return date.toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+  return date.toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "short",
+  });
 }
 
 function easeOutCubic(t: number): number {
@@ -156,6 +197,7 @@ export function Spotlight() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<ChatTurn[]>([]);
+  const activeConversationIdRef = useRef<string>("");
   const closingRef = useRef(false);
   const isOpenRef = useRef(false);
   const streamingIdRef = useRef<string | null>(null);
@@ -163,6 +205,9 @@ export function Spotlight() {
 
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<ChatTurn[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -172,19 +217,46 @@ export function Spotlight() {
     messagesRef.current = messages;
   }, [messages]);
 
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
+
+  const applyStore = useCallback((store: SpotlightStore) => {
+    setConversations(store.conversations);
+    setActiveConversationId(store.activeConversationId);
+    activeConversationIdRef.current = store.activeConversationId;
+
+    const active = store.conversations.find(
+      (c) => c.id === store.activeConversationId,
+    );
+    const turns = mapStoredTurns(active?.messages ?? []);
+    setMessages(turns);
+    messagesRef.current = turns;
+  }, []);
+
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  const persistMessages = useCallback(async (turns: ChatTurn[]) => {
-    await invoke("save_spotlight_session", {
-      messages: turns.map((m) => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-      })),
-    });
-  }, []);
+  const persistCurrentConversation = useCallback(
+    async (turns: ChatTurn[]) => {
+      const conversationId = activeConversationIdRef.current;
+      if (!conversationId) return;
+
+      const existing = conversations.find((c) => c.id === conversationId);
+      const store = await invoke<SpotlightStore>("upsert_conversation", {
+        conversation: {
+          id: conversationId,
+          title: existing?.title ?? "Nueva conversación",
+          createdAt: existing?.createdAt ?? new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          messages: toStoredTurns(turns),
+        },
+      });
+      applyStore(store);
+    },
+    [applyStore, conversations],
+  );
 
   const focusInput = useCallback(() => {
     inputRef.current?.focus();
@@ -240,19 +312,16 @@ export function Spotlight() {
     await win.hide();
     isOpenRef.current = false;
     closingRef.current = false;
+    setHistoryOpen(false);
   }, []);
 
   useEffect(() => {
     void Promise.all([
-      invoke<StoredTurn[]>("load_spotlight_session"),
+      invoke<SpotlightStore>("load_spotlight_store"),
       invoke<AppSettings>("load_settings"),
       invoke<ModelInfo[]>("list_chat_models"),
-    ]).then(([stored, settings, modelList]) => {
-      if (stored.length > 0) {
-        const turns = mapStoredTurns(stored);
-        setMessages(turns);
-        messagesRef.current = turns;
-      }
+    ]).then(([store, settings, modelList]) => {
+      applyStore(store);
       const savedModel = normalizeModelId(settings.selectedModel || DEFAULT_MODEL);
       setSelectedModel(savedModel);
       setModels(modelList);
@@ -262,7 +331,7 @@ export function Spotlight() {
         });
       }
     });
-  }, []);
+  }, [applyStore]);
 
   useEffect(() => {
     const unlistenOpen = listen("spotlight:open", () => {
@@ -280,12 +349,16 @@ export function Spotlight() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (historyOpen) {
+          setHistoryOpen(false);
+          return;
+        }
         void closePanel();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closePanel]);
+  }, [closePanel, historyOpen]);
 
   useEffect(() => {
     scrollToBottom();
@@ -300,16 +373,50 @@ export function Spotlight() {
     });
   };
 
+  const switchConversation = async (conversationId: string) => {
+    if (loading || conversationId === activeConversationId) {
+      setHistoryOpen(false);
+      return;
+    }
+
+    await persistCurrentConversation(messagesRef.current);
+    const store = await invoke<SpotlightStore>("set_active_conversation", {
+      conversationId,
+    });
+    applyStore(store);
+    setHistoryOpen(false);
+    focusInput();
+  };
+
   const startNewChat = async () => {
     if (loading) return;
-    if (messages.length > 0) {
-      const ok = window.confirm("¿Empezar una conversación nueva? Se borrará el historial actual.");
-      if (!ok) return;
-    }
-    setMessages([]);
-    messagesRef.current = [];
-    await persistMessages([]);
+    await persistCurrentConversation(messagesRef.current);
+    const store = await invoke<SpotlightStore>("create_conversation");
+    applyStore(store);
+    setHistoryOpen(false);
     focusInput();
+  };
+
+  const deleteConversation = async (
+    event: React.MouseEvent,
+    conversationId: string,
+  ) => {
+    event.stopPropagation();
+    if (loading) return;
+
+    const target = conversations.find((c) => c.id === conversationId);
+    const label = target?.title ?? "esta conversación";
+    const ok = window.confirm(`¿Eliminar "${label}"?`);
+    if (!ok) return;
+
+    if (conversationId === activeConversationId) {
+      await persistCurrentConversation(messagesRef.current);
+    }
+
+    const store = await invoke<SpotlightStore>("delete_conversation", {
+      conversationId,
+    });
+    applyStore(store);
   };
 
   const stopGeneration = () => {
@@ -375,7 +482,7 @@ export function Spotlight() {
         messagesRef.current = updated;
         return updated;
       });
-      await persistMessages(messagesRef.current);
+      await persistCurrentConversation(messagesRef.current);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Error al contactar con OpenClaw";
@@ -390,7 +497,7 @@ export function Spotlight() {
       const withError = [...withoutAssistant, errorTurn];
       setMessages(withError);
       messagesRef.current = withError;
-      await persistMessages(withError);
+      await persistCurrentConversation(withError);
     } finally {
       cleanupStreamListeners();
       streamingIdRef.current = null;
@@ -407,12 +514,28 @@ export function Spotlight() {
     await closePanel();
   };
 
+  const activeConversation = conversations.find(
+    (c) => c.id === activeConversationId,
+  );
+
   return (
     <div className="spotlight-root">
       <div className="spotlight-sidebar">
         <header className="spotlight-header">
           <div className="spotlight-header__left">
-            <span className="spotlight-header__title">LOCUS</span>
+            <button
+              type="button"
+              className={`spotlight-btn spotlight-btn--icon spotlight-btn--history${
+                historyOpen ? " spotlight-btn--history-active" : ""
+              }`}
+              title="Historial de conversaciones"
+              onClick={() => setHistoryOpen((open) => !open)}
+              disabled={loading}
+              aria-label="Historial de conversaciones"
+              aria-expanded={historyOpen}
+            >
+              ☰
+            </button>
             <select
               className="spotlight-header__model"
               value={selectedModel}
@@ -456,20 +579,82 @@ export function Spotlight() {
           </div>
         </header>
 
-        <div className="spotlight-messages">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`spotlight-turn spotlight-turn--${msg.role}`}
-            >
-              <MessageContent
-                role={msg.role}
-                content={msg.content}
-                streaming={loading && msg.id === streamingId}
-              />
-            </div>
-          ))}
-          <div ref={bottomRef} className="spotlight-messages__anchor" />
+        {activeConversation && !historyOpen && (
+          <div className="spotlight-conversation-bar" title={activeConversation.title}>
+            {activeConversation.title}
+          </div>
+        )}
+
+        <div className="spotlight-body">
+          {historyOpen && (
+            <aside className="spotlight-history" aria-label="Historial">
+              <div className="spotlight-history__header">
+                <span>Conversaciones</span>
+                <button
+                  type="button"
+                  className="spotlight-history__new"
+                  onClick={() => void startNewChat()}
+                  disabled={loading}
+                >
+                  + Nueva
+                </button>
+              </div>
+              <ul className="spotlight-history__list">
+                {conversations.map((conversation) => (
+                  <li key={conversation.id}>
+                    <button
+                      type="button"
+                      className={`spotlight-history__item${
+                        conversation.id === activeConversationId
+                          ? " spotlight-history__item--active"
+                          : ""
+                      }`}
+                      onClick={() => void switchConversation(conversation.id)}
+                      disabled={loading}
+                    >
+                      <span className="spotlight-history__title">
+                        {conversation.title}
+                      </span>
+                      <span className="spotlight-history__meta">
+                        {formatConversationDate(conversation.updatedAt)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="spotlight-history__delete"
+                      title="Eliminar conversación"
+                      aria-label={`Eliminar ${conversation.title}`}
+                      onClick={(e) => void deleteConversation(e, conversation.id)}
+                      disabled={loading}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          )}
+
+          <div className="spotlight-messages">
+            {messages.length === 0 && !loading && (
+              <p className="spotlight-messages__empty">
+                Escribe una pregunta para empezar.
+              </p>
+            )}
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`spotlight-turn spotlight-turn--${msg.role}`}
+              >
+                <MessageContent
+                  role={msg.role}
+                  content={msg.content}
+                  streaming={loading && msg.id === streamingId}
+                />
+              </div>
+            ))}
+            <div ref={bottomRef} className="spotlight-messages__anchor" />
+          </div>
         </div>
 
         <footer className="spotlight-composer">

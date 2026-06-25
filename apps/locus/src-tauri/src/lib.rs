@@ -7,7 +7,10 @@ mod spotlight_window;
 mod supervisor;
 
 use chat_cancel::ChatCancelState;
-use spotlight_session::{load_spotlight_session, save_spotlight_session};
+use spotlight_session::{
+    create_conversation, delete_conversation, load_spotlight_session, load_spotlight_store,
+    save_spotlight_session, save_spotlight_store, set_active_conversation, upsert_conversation,
+};
 use spotlight_window::{read_gateway_token, toggle as toggle_spotlight};
 use supervisor::get_service_health;
 use tauri::{Emitter, Manager};
@@ -99,6 +102,12 @@ pub fn run() {
             settings::load_settings,
             settings::save_settings,
             ollama::list_chat_models,
+            load_spotlight_store,
+            save_spotlight_store,
+            create_conversation,
+            set_active_conversation,
+            delete_conversation,
+            upsert_conversation,
             load_spotlight_session,
             save_spotlight_session
         ])
