@@ -1,0 +1,13 @@
+{
+  "name": "locus-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "pnpm --filter @locus/app tauri dev",
+    "build": "pnpm --filter @locus/app tauri build",
+    "setup": "powershell -ExecutionPolicy Bypass -File scripts/setup.ps1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

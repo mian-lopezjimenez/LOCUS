@@ -1,0 +1,17 @@
+node_modules/
+dist/
+target/
+.turbo/
+*.log
+.DS_Store
+Thumbs.db
+
+# Tauri
+apps/locus/src-tauri/gen/
+apps/locus/src-tauri/target/
+
+# Local config (tokens)
+.openclaw/
+*.local.json
+.env
+.env.*

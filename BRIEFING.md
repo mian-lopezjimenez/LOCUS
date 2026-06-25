@@ -261,7 +261,7 @@ Estos casos alimentan la elección del modelo genérico y del primer especialist
 | Confirmación texto + voz | ✅ |
 | Historial de conversaciones | ✅ |
 | Windows como plataforma principal | ✅ |
-| Stack tecnológico | ⏳ Tras cerrar briefing |
+| Stack tecnológico | ✅ Ver [STACK.md](./STACK.md) |
 
 ---
 
@@ -330,9 +330,9 @@ Empezar por **texto** (no voz) permite validar el núcleo — OpenClaw + Ollama 
 | D4 | Hardware objetivo | ✅ Ryzen 5 3600 · RTX 2060 Super 8GB · 32GB RAM |
 | D5 | Atajos de teclado | ✅ `Ctrl+Win+V` (voz) · `Ctrl+Win+L` (prompt) |
 | D6 | Posición barra prompt | ✅ Centro superior, estilo Spotlight |
-| D7 | Stack tecnológico | ⏳ **Siguiente paso** — tras cerrar briefing |
+| D7 | Stack tecnológico | ✅ Definido en [STACK.md](./STACK.md) |
 
-**Briefing funcional:** ✅ Cerrado. Listo para fase de stack tecnológico.
+**Briefing funcional:** ✅ Cerrado.
 
 ---
 
@@ -389,17 +389,17 @@ Empezar por **texto** (no voz) permite validar el núcleo — OpenClaw + Ollama 
 | 0.2 | Personal, local-only, OpenClaw investigado |
 | 0.3 | Terminal independiente, UX barra prompt, atajos, fases MVP, Ollama instalado, confirmaciones dual |
 | 0.4 | Hardware, atajos y UX confirmados; casos de uso; modelos recomendados; briefing funcional cerrado |
+| 0.5 | Stack tecnológico definido en STACK.md |
 
 ---
 
-## 17. Próximo paso: stack tecnológico
+## 17. Stack tecnológico
 
-El briefing funcional está **cerrado**. La siguiente fase consiste en decidir:
+Definido en **[STACK.md](./STACK.md)**. Resumen:
 
-- Lenguaje y framework del **servicio LOCUS** (segundo plano, atajos globales, overlay).
-- Tecnología de la **barra prompt** y **terminal** independiente.
-- Integración con **OpenClaw Gateway** (API, protocolo).
-- **STT/TTS** locales para Fase 6 (evaluación diferida).
-- Estructura del repositorio y despliegue en Windows (arranque automático).
+- **Tauri 2** + **React/TypeScript** + **Tailwind/shadcn**
+- LOCUS supervisa **OpenClaw Gateway**; health check de **Ollama**
+- Monorepo **pnpm**; desarrollo primero, instalador después
+- Terminal: **xterm.js + portable-pty**; predeterminado Windows en fase posterior
 
-*Este documento se ampliará con un `STACK.md` o sección dedicada una vez acordado el stack.*
+**Próximo paso:** scaffold del monorepo e implementación Fase 1.
