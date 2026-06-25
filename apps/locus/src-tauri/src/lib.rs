@@ -1,6 +1,7 @@
 mod attachments;
 mod chat_cancel;
 mod ollama;
+mod export;
 mod openclaw_config;
 mod openclaw_chat;
 mod settings;
@@ -113,6 +114,7 @@ pub fn run() {
             attachments::persist_pdf_attachment,
             attachments::load_image_data_url,
             attachments::load_pdf_bytes,
+            export::write_text_file,
             load_spotlight_store,
             save_spotlight_store,
             create_conversation,

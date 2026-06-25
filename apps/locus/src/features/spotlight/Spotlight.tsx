@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Maximize2 } from "lucide-react";
+import { Download, Maximize2 } from "lucide-react";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import {
@@ -19,8 +19,10 @@ import { useSpotlightWindow } from "@/hooks/useSpotlightWindow";
 import { DEFAULT_MODEL } from "@/lib/constants";
 import { ROUTES } from "@/lib/routes";
 import { loadSpotlightStore } from "@/services/conversations";
+import { saveMarkdownFile } from "@/services/export";
 import { listChatModels } from "@/services/models";
 import { loadSettings, saveSettings } from "@/services/settings";
+import { defaultExportFilename, formatConversationMarkdown } from "@/utils/exportChat";
 import { normalizeModelId } from "@/utils/model";
 import { pickVisionModel } from "@/pipeline/imageTurn";
 import type { ModelInfo } from "@/types/models";
@@ -40,6 +42,9 @@ function SpotlightChatView({
   streamingId,
   processingPhase,
   onRetry,
+  onExport,
+  exportDisabled,
+  exportError,
   onOpenFullView,
   attachments,
   onRemoveAttachment,
@@ -61,6 +66,9 @@ function SpotlightChatView({
   streamingId: string | null;
   processingPhase: ProcessingPhase;
   onRetry: (messageId: string) => void;
+  onExport: () => void;
+  exportDisabled: boolean;
+  exportError: string | null;
   onOpenFullView: () => void;
   attachments: ReturnType<typeof useComposerAttachments>["attachments"];
   onRemoveAttachment: (id: string) => void;
@@ -72,7 +80,20 @@ function SpotlightChatView({
   return (
     <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
       <DropOverlay active={dragOver} />
-      <header className="flex shrink-0 items-center justify-end border-b border-border bg-card px-2 py-1">
+      <header className="flex shrink-0 items-center justify-end gap-1 border-b border-border bg-card px-2 py-1">
+        {exportError && (
+          <p className="mr-auto truncate text-xs text-destructive" role="alert">
+            {exportError}
+          </p>
+        )}
+        <IconButton
+          label="Exportar conversación"
+          tooltip="Exportar conversación (.md)"
+          onClick={onExport}
+          disabled={exportDisabled}
+        >
+          <Download className="size-4" />
+        </IconButton>
         <IconButton
           label="Abrir modo completo"
           tooltip="Modo completo (Fase 3)"
@@ -130,6 +151,7 @@ export function Spotlight() {
   const [query, setQuery] = useState("");
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const focusInput = useCallback(() => {
     inputRef.current?.focus();
@@ -238,6 +260,31 @@ export function Spotlight() {
     await closePanel();
   };
 
+  const activeTitle =
+    conversations.find((conversation) => conversation.id === activeConversationId)
+      ?.title ?? "Conversación";
+
+  const handleExport = useCallback(async () => {
+    setExportError(null);
+    if (messages.length === 0) {
+      setExportError("No hay mensajes para exportar.");
+      return;
+    }
+
+    try {
+      const markdown = formatConversationMarkdown(activeTitle, messages);
+      const saved = await saveMarkdownFile(
+        defaultExportFilename(activeTitle),
+        markdown,
+      );
+      if (!saved) return;
+    } catch (error) {
+      setExportError(
+        error instanceof Error ? error.message : "No se pudo exportar la conversación.",
+      );
+    }
+  }, [activeTitle, messages]);
+
   return (
     <HashRouter>
       <div className="flex h-full overflow-hidden bg-background text-foreground">
@@ -272,6 +319,9 @@ export function Spotlight() {
                 streamingId={streamingId}
                 processingPhase={processingPhase}
                 onRetry={(messageId) => void retryFromMessage(messageId)}
+                onExport={() => void handleExport()}
+                exportDisabled={messages.length === 0}
+                exportError={exportError}
                 onOpenFullView={() => void openFullView()}
                 attachments={attachments}
                 onRemoveAttachment={removeAttachment}
