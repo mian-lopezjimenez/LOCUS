@@ -1,6 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SYSTEM_PROMPT } from "@/lib/constants";
 import {
   pendingToMessageAttachments,
   persistTurnAttachments,
@@ -13,13 +12,17 @@ import type { MessageAttachment, PendingAttachment } from "@/types/attachment";
 import type { ChatTurn } from "@/types/chat";
 import type { ModelInfo } from "@/types/models";
 import { newId } from "@/utils/id";
-import { buildApiMessages, buildDisplayContent } from "@/utils/attachments";
+import { openClawTurnSessionKey } from "@/lib/openclawSession";
+import { buildDisplayContent } from "@/utils/attachments";
 import { trimContextForApi } from "@/utils/contextLimits";
 import { findRetryContext } from "@/utils/retry";
 import {
-  needsVisionDelegation,
-  prepareAttachmentsForChatModel,
-} from "@/utils/vision";
+  applyVisionDescription,
+  buildChatPayload,
+  inspectTurn,
+  isVisionCapable,
+  runVisionStep,
+} from "@/pipeline/imageTurn";
 
 export type ProcessingPhase = "vision" | "chat" | null;
 
@@ -28,7 +31,6 @@ type UseChatStreamOptions = {
   messagesRef: React.MutableRefObject<ChatTurn[]>;
   setMessages: React.Dispatch<React.SetStateAction<ChatTurn[]>>;
   selectedModel: string;
-  visionModelId?: string;
   models: ModelInfo[];
   activeConversationId: string;
   persistCurrentConversation: (turns: ChatTurn[]) => Promise<void>;
@@ -39,7 +41,6 @@ export function useChatStream({
   messagesRef,
   setMessages,
   selectedModel,
-  visionModelId,
   models,
   activeConversationId,
   persistCurrentConversation,
@@ -144,17 +145,30 @@ export function useChatStream({
       streamUnlistenersRef.current = [unlistenChunk, unlistenCancelled];
 
       try {
-        setProcessingPhase("vision");
-        const preparedUser = await prepareAttachmentsForChatModel(
-          trimmed,
-          persistedAttachments,
-          selectedModel,
+        const plan = inspectTurn({
+          userText: trimmed,
+          attachments: persistedAttachments,
+          chatModelId: selectedModel,
           models,
-          visionModelId,
-        );
-        const finalAttachments = preparedUser.attachments;
+        });
 
-        if (finalAttachments !== persistedAttachments) {
+        let visionDescription: string | undefined;
+        let finalAttachments = persistedAttachments;
+
+        if (plan.kind === "vision_then_chat") {
+          if (!isVisionCapable(models)) {
+            throw new Error(
+              "No hay ningún modelo de visión instalado. Ejecuta «ollama pull qwen2.5vl:7b» y reinicia OpenClaw.",
+            );
+          }
+
+          setProcessingPhase("vision");
+          visionDescription = await runVisionStep(plan, trimmed);
+          finalAttachments = applyVisionDescription(
+            persistedAttachments,
+            visionDescription,
+          );
+
           setMessages((prev) => {
             const updated = prev.map((message) =>
               message.id === userId
@@ -166,45 +180,27 @@ export function useChatStream({
           });
         }
 
-        const hasImagesInCurrent = finalAttachments.some(
-          (attachment) => attachment.kind === "image",
-        );
         const trimmedContext = trimContextForApi(context, {
-          hasImagesInCurrentMessage: hasImagesInCurrent,
-        });
-        const chatUsesVisionDelegation = needsVisionDelegation(
-          finalAttachments,
-          selectedModel,
-          models,
-        );
-
-        const contextMessages = trimmedContext.map((message) => {
-          const userText = message.prompt ?? message.content;
-          const hasImages = (message.attachments ?? []).some(
-            (attachment) => attachment.kind === "image",
-          );
-
-          return {
-            role: message.role,
-            content: userText,
-            attachments: message.attachments ?? [],
-            textOnlyImages:
-              chatUsesVisionDelegation &&
-              hasImages &&
-              message.role === "user",
-          };
+          hasImagesInCurrentMessage: plan.kind === "vision_then_chat",
         });
 
-        const apiMessages = await buildApiMessages(
-          SYSTEM_PROMPT,
-          contextMessages,
-          trimmed,
-          finalAttachments,
-          { textOnlyImages: preparedUser.textOnlyImages },
-        );
+        const contextMessages = trimmedContext.map((message) => ({
+          role: message.role,
+          content: message.prompt ?? message.content,
+          attachments: message.attachments ?? [],
+        }));
 
         setProcessingPhase("chat");
-        const answer = await sendChatMessageStream(apiMessages, selectedModel);
+        const apiMessages = await buildChatPayload(
+          plan,
+          contextMessages,
+          visionDescription,
+        );
+
+        const answer = await sendChatMessageStream(apiMessages, selectedModel, {
+          sessionKey: openClawTurnSessionKey(userId),
+          messageChannel: "locus",
+        });
 
         setMessages((prev) => {
           const streamed =
@@ -261,7 +257,6 @@ export function useChatStream({
       persistCurrentConversation,
       selectedModel,
       setMessages,
-      visionModelId,
     ],
   );
 

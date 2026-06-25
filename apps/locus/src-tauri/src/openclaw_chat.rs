@@ -84,26 +84,74 @@ fn build_request(
   messages: &[ChatMessage],
   model: &str,
   stream: bool,
+  session_user: Option<&str>,
 ) -> serde_json::Value {
-  serde_json::json!({
+  let mut body = serde_json::json!({
     "model": model,
     "messages": messages,
     "stream": stream,
-  })
+  });
+
+  if let Some(user) = session_user.filter(|value| !value.is_empty()) {
+    body["user"] = serde_json::Value::String(user.to_string());
+  }
+
+  body
+}
+
+fn apply_session_headers(
+  mut request: reqwest::RequestBuilder,
+  session_key: Option<&str>,
+  message_channel: Option<&str>,
+) -> reqwest::RequestBuilder {
+  if let Some(key) = session_key.filter(|value| !value.is_empty()) {
+    request = request.header("x-openclaw-session-key", key);
+  }
+  if let Some(channel) = message_channel.filter(|value| !value.is_empty()) {
+    request = request.header("x-openclaw-message-channel", channel);
+  }
+  request
+}
+
+fn extract_text_content(value: &serde_json::Value) -> String {
+  match value {
+    serde_json::Value::String(text) => text.clone(),
+    serde_json::Value::Array(parts) => parts
+      .iter()
+      .filter_map(|part| {
+        let part_type = part.get("type")?.as_str()?;
+        if part_type != "text" {
+          return None;
+        }
+        part.get("text")?.as_str().map(str::to_string)
+      })
+      .collect::<Vec<_>>()
+      .join("\n"),
+    _ => String::new(),
+  }
 }
 
 async fn send_non_streaming(
   client: &reqwest::Client,
   messages: &[ChatMessage],
   model: &str,
+  session_user: Option<&str>,
+  session_key: Option<&str>,
+  message_channel: Option<&str>,
 ) -> Result<String, String> {
   ensure_model_allowed(model)?;
   let resolved = resolve_model(model);
   let mut request = client
     .post(OPENCLAW_CHAT_URL)
-    .json(&build_request(messages, &resolved.gateway_model, false));
+    .json(&build_request(
+      messages,
+      &resolved.gateway_model,
+      false,
+      session_user,
+    ));
 
   request = apply_model_headers(request, &resolved);
+  request = apply_session_headers(request, session_key, message_channel);
 
   if let Some(auth) = auth_header() {
     request = request.header("Authorization", auth);
@@ -129,7 +177,7 @@ async fn send_non_streaming(
     .choices
     .and_then(|choices| choices.into_iter().next())
     .and_then(|choice| choice.message)
-    .and_then(|message| message.content.as_str().map(str::to_string))
+    .map(|message| extract_text_content(&message.content))
     .unwrap_or_default();
 
   Ok(content)
@@ -156,14 +204,23 @@ async fn send_streaming(
   client: &reqwest::Client,
   messages: &[ChatMessage],
   model: &str,
+  session_user: Option<&str>,
+  session_key: Option<&str>,
+  message_channel: Option<&str>,
 ) -> Result<String, String> {
   ensure_model_allowed(model)?;
   let resolved = resolve_model(model);
   let mut request = client
     .post(OPENCLAW_CHAT_URL)
-    .json(&build_request(messages, &resolved.gateway_model, true));
+    .json(&build_request(
+      messages,
+      &resolved.gateway_model,
+      true,
+      session_user,
+    ));
 
   request = apply_model_headers(request, &resolved);
+  request = apply_session_headers(request, session_key, message_channel);
 
   if let Some(auth) = auth_header() {
     request = request.header("Authorization", auth);
@@ -215,13 +272,24 @@ async fn send_streaming(
 pub async fn send_chat_message(
   messages: Vec<ChatMessage>,
   model: String,
+  session_user: Option<String>,
+  session_key: Option<String>,
+  message_channel: Option<String>,
 ) -> Result<String, String> {
   let client = reqwest::Client::builder()
     .timeout(std::time::Duration::from_secs(120))
     .build()
     .map_err(|e| e.to_string())?;
 
-  send_non_streaming(&client, &messages, &model).await
+  send_non_streaming(
+    &client,
+    &messages,
+    &model,
+    session_user.as_deref(),
+    session_key.as_deref(),
+    message_channel.as_deref(),
+  )
+  .await
 }
 
 #[tauri::command]
@@ -230,6 +298,9 @@ pub async fn send_chat_message_stream(
   cancel_state: State<'_, ChatCancelState>,
   messages: Vec<ChatMessage>,
   model: String,
+  session_user: Option<String>,
+  session_key: Option<String>,
+  message_channel: Option<String>,
 ) -> Result<String, String> {
   cancel_state.reset();
 
@@ -238,7 +309,17 @@ pub async fn send_chat_message_stream(
     .build()
     .map_err(|e| e.to_string())?;
 
-  let result = send_streaming(&app, &cancel_state, &client, &messages, &model).await;
+  let result = send_streaming(
+    &app,
+    &cancel_state,
+    &client,
+    &messages,
+    &model,
+    session_user.as_deref(),
+    session_key.as_deref(),
+    message_channel.as_deref(),
+  )
+  .await;
 
   if cancel_state.is_cancelled() {
     return result;

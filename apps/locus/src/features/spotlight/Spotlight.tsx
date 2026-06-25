@@ -21,7 +21,7 @@ import { loadSpotlightStore } from "@/services/conversations";
 import { listChatModels } from "@/services/models";
 import { loadSettings, saveSettings } from "@/services/settings";
 import { normalizeModelId } from "@/utils/model";
-import { pickVisionModel } from "@/utils/vision";
+import { pickVisionModel } from "@/pipeline/imageTurn";
 import type { ModelInfo } from "@/types/models";
 import type { ChatTurn } from "@/types/chat";
 
@@ -49,7 +49,6 @@ function SpotlightChatView({
   onDrop,
   dragOver,
   attachmentError,
-  visionModelId,
 }: {
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
   query: string;
@@ -74,7 +73,6 @@ function SpotlightChatView({
   onDrop: (event: React.DragEvent) => void;
   dragOver: boolean;
   attachmentError: string | null;
-  visionModelId?: string;
 }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -130,7 +128,6 @@ function SpotlightChatView({
         onDrop={onDrop}
         dragOver={dragOver}
         attachmentError={attachmentError}
-        visionModelId={visionModelId}
       />
     </div>
   );
@@ -140,7 +137,6 @@ export function Spotlight() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [query, setQuery] = useState("");
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
-  const [visionModelId, setVisionModelId] = useState<string | undefined>();
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
   const focusInput = useCallback(() => {
@@ -182,7 +178,6 @@ export function Spotlight() {
       messagesRef,
       setMessages,
       selectedModel,
-      visionModelId,
       models,
       activeConversationId,
       persistCurrentConversation,
@@ -220,7 +215,6 @@ export function Spotlight() {
 
     const savedVision = settings.visionModel;
     const visionPick = pickVisionModel(modelList, savedVision);
-    setVisionModelId(visionPick?.id);
 
     const settingsPatch: Parameters<typeof saveSettings>[0] = {};
     if (savedModel !== settings.selectedModel) {
@@ -299,7 +293,6 @@ export function Spotlight() {
                 onDrop={handleDrop}
                 dragOver={dragOver}
                 attachmentError={attachmentError}
-                visionModelId={visionModelId}
               />
             }
           />

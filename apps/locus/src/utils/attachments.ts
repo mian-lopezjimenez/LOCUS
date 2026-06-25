@@ -63,7 +63,7 @@ function appendTextAttachments(
   return body;
 }
 
-async function resolveImageUrl(
+export async function resolveImageUrl(
   attachment: MessageAttachment & { kind: "image" },
   forVision = false,
 ) {
@@ -101,9 +101,11 @@ export async function buildApiContent(
     let body = textBody;
     for (const image of images) {
       const description =
-        image.visionDescription ??
-        "[La imagen no pudo incluirse en el contexto por límite de tamaño]";
-      body += `\n\n--- ${image.name} (análisis visual) ---\n${description}`;
+        image.visionDescription &&
+        image.visionDescription.trim().length > 0
+          ? image.visionDescription
+          : "[La imagen no pudo analizarse]";
+      body += `\n\n[Análisis visual de la imagen — ${image.name}]\n${description}\n[/Análisis visual]`;
     }
     return body;
   }

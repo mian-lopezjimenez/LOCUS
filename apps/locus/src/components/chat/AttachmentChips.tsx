@@ -56,8 +56,8 @@ export function VisionNotice({ visionUnavailable }: VisionNoticeProps) {
 
   return (
     <p className="mb-2 text-xs text-amber-500">
-      No hay modelo de visión instalado. Ejecuta «ollama pull qwen2.5vl:7b» para
-      analizar imágenes con tu modelo de chat actual.
+      No hay modelo de visión instalado. Ejecuta «ollama pull qwen2.5vl:7b» y
+      reinicia OpenClaw para analizar imágenes.
     </p>
   );
 }

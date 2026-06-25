@@ -15,7 +15,7 @@ import type { PendingAttachment } from "@/types/attachment";
 import type { ChatRole } from "@/types/chat";
 import type { ModelInfo } from "@/types/models";
 import { hasImageAttachments } from "@/utils/attachments";
-import { pickVisionModel } from "@/utils/vision";
+import { isVisionCapable } from "@/pipeline/imageTurn";
 
 type ChatComposerProps = {
   query: string;
@@ -36,7 +36,6 @@ type ChatComposerProps = {
   onDrop: (event: React.DragEvent) => void;
   dragOver: boolean;
   attachmentError?: string | null;
-  visionModelId?: string;
 };
 
 export function ChatComposer({
@@ -58,13 +57,9 @@ export function ChatComposer({
   onDrop,
   dragOver,
   attachmentError,
-  visionModelId,
 }: ChatComposerProps) {
-  const selected = models.find((model) => model.id === selectedModel);
   const needsVision = hasImageAttachments(attachments);
-  const visionModel = pickVisionModel(models, visionModelId);
-  const visionUnavailable =
-    needsVision && !selected?.supportsVision && !visionModel;
+  const visionUnavailable = needsVision && !isVisionCapable(models);
   const canSubmit =
     (query.trim() || attachments.length > 0) && !visionUnavailable;
 
