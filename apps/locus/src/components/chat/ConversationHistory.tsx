@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { HistorySettingsFooter } from "@/components/chat/HistorySettingsFooter";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -18,6 +20,7 @@ import {
   HISTORY_SIDEBAR_COLLAPSED_WIDTH,
   HISTORY_SIDEBAR_WIDTH,
 } from "@/lib/constants";
+import { ROUTES } from "@/lib/routes";
 import type { Conversation } from "@/types/conversation";
 import { formatConversationDate } from "@/utils/date";
 
@@ -40,6 +43,9 @@ export function ConversationHistory({
 }: ConversationHistoryProps) {
   const [collapsed, setCollapsed] = useState(true);
   const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null);
+  const navigate = useNavigate();
+
+  const openChat = () => navigate(ROUTES.chat);
 
   return (
     <>
@@ -54,21 +60,28 @@ export function ConversationHistory({
         aria-expanded={!collapsed}
       >
         {collapsed ? (
-          <div className="flex shrink-0 flex-col items-center gap-1 border-b border-sidebar-border py-2">
-            <IconButton
-              label="Mostrar historial"
-              onClick={() => setCollapsed(false)}
-            >
-              <ChevronRight className="size-4" />
-            </IconButton>
-            <IconButton
-              label="Nueva conversación"
-              onClick={onCreate}
-              disabled={loading}
-            >
-              <Plus className="size-4" />
-            </IconButton>
-          </div>
+          <>
+            <div className="flex shrink-0 flex-col items-center gap-1 border-b border-sidebar-border py-2">
+              <IconButton
+                label="Mostrar historial"
+                onClick={() => setCollapsed(false)}
+              >
+                <ChevronRight className="size-4" />
+              </IconButton>
+              <IconButton
+                label="Nueva conversación"
+                onClick={() => {
+                  onCreate();
+                  openChat();
+                }}
+                disabled={loading}
+              >
+                <Plus className="size-4" />
+              </IconButton>
+            </div>
+            <div className="min-h-0 flex-1" />
+            <HistorySettingsFooter collapsed />
+          </>
         ) : (
           <>
             <div className="flex shrink-0 items-center justify-between gap-1 border-b border-sidebar-border px-2 py-2">
@@ -88,7 +101,10 @@ export function ConversationHistory({
                 variant="ghost"
                 size="sm"
                 className="h-8 shrink-0 gap-1 text-primary"
-                onClick={onCreate}
+                onClick={() => {
+                  onCreate();
+                  openChat();
+                }}
                 disabled={loading}
               >
                 <Plus className="size-4" />
@@ -106,7 +122,10 @@ export function ConversationHistory({
                     <button
                       type="button"
                       disabled={loading}
-                      onClick={() => onSelect(conversation.id)}
+                      onClick={() => {
+                        onSelect(conversation.id);
+                        openChat();
+                      }}
                       className={cn(
                         "relative w-full min-w-0 overflow-hidden rounded-lg border border-transparent px-3 py-2.5 text-left transition-[padding,colors] disabled:pointer-events-none disabled:opacity-50",
                         !loading && "group-hover:pr-11 hover:bg-sidebar-accent",
@@ -160,6 +179,8 @@ export function ConversationHistory({
                 ))}
               </ul>
             </ScrollArea>
+
+            <HistorySettingsFooter collapsed={false} />
           </>
         )}
       </aside>

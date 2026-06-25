@@ -1,7 +1,6 @@
 import { Square, ArrowRight } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { ModelSelect } from "@/components/chat/SpotlightHeader";
-import { ThemeSelect } from "@/components/chat/ThemeSelect";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,14 +34,13 @@ export function ChatComposer({
 }: ChatComposerProps) {
   return (
     <footer className="shrink-0 border-t border-border bg-card px-3 py-2.5">
-      <div className="mb-2 flex min-w-0 items-center gap-0.5">
+      <div className="mb-2 flex min-w-0 items-center">
         <ModelSelect
           models={models}
           value={selectedModel}
           onChange={onModelChange}
           disabled={loading}
         />
-        <ThemeSelect />
       </div>
       <div className="flex items-center gap-2">
         <Textarea

@@ -15,6 +15,7 @@ type ModelSelectProps = {
   models: ModelInfo[];
   value: string;
   disabled?: boolean;
+  variant?: "default" | "sidebar";
   onChange: (modelId: string) => void;
 };
 
@@ -22,11 +23,14 @@ export function ModelSelect({
   models,
   value,
   disabled,
+  variant = "default",
   onChange,
 }: ModelSelectProps) {
   const current =
     models.find((model) => model.id === value) ??
     ({ id: value, label: value, supportsVision: false } satisfies ModelInfo);
+
+  const isSidebar = variant === "sidebar";
 
   return (
     <DropdownMenu>
@@ -36,15 +40,26 @@ export function ModelSelect({
           variant="ghost"
           size="sm"
           disabled={disabled}
-          className="h-7 max-w-[min(100%,12rem)] gap-1.5 px-2 text-xs text-muted-foreground"
+          className={cn(
+            "h-7 gap-1.5 px-2 text-xs text-muted-foreground",
+            isSidebar
+              ? "w-full justify-between"
+              : "max-w-[min(100%,12rem)]",
+          )}
           aria-label="Seleccionar modelo"
         >
-          <Cpu className="size-3.5 shrink-0" />
-          <span className="truncate">{current.label}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <Cpu className="size-3.5 shrink-0" />
+            <span className="truncate">{current.label}</span>
+          </span>
           <ChevronDown className="size-3.5 shrink-0 opacity-60" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-w-72">
+      <DropdownMenuContent
+        align="start"
+        side={isSidebar ? "top" : "bottom"}
+        className="max-w-72"
+      >
         <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
           {models.length === 0 ? (
             <DropdownMenuRadioItem value={value}>{value}</DropdownMenuRadioItem>
